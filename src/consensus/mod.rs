@@ -31,7 +31,8 @@ pub struct CommitCertificate {
     pub height: u64,
     pub round: u64,
     pub block_hash: String,
-    pub voters: Vec<String>,
+    /// Signed votes proving the certificate quorum.
+    pub votes: Vec<Vote>,
 }
 
 impl Consensus {
@@ -88,12 +89,14 @@ impl Consensus {
     }
 
     pub fn build_certificate(&self, block: &Block, votes: &[Vote], validators: &ValidatorSet) -> Result<CommitCertificate, String> {
+        let mut selected = Vec::new();
         let mut voters = Vec::new();
         for vote in votes {
             if vote.chain_id == block.chain_id && vote.height == block.index && vote.round == block.round
                 && vote.block_hash == block.hash && self.verify_vote(vote, validators).is_ok()
                 && !voters.contains(&vote.validator_id) {
                 voters.push(vote.validator_id.clone());
+                selected.push(vote.clone());
             }
         }
         if !self.has_quorum(validators, &voters) { return Err("quorum not reached".to_string()); }
@@ -102,7 +105,7 @@ impl Consensus {
             height: block.index,
             round: block.round,
             block_hash: block.hash.clone(),
-            voters,
+            votes: selected,
         })
     }
 
@@ -115,13 +118,59 @@ impl Consensus {
             return Err("certificate does not match block".to_string());
         }
         let mut unique = Vec::new();
-        for id in &cert.voters {
-            if unique.contains(id) { return Err("duplicate voter in certificate".to_string()); }
-            let v = validators.validators.get(id).ok_or("certificate contains unknown validator")?;
-            if !v.active || v.jailed || v.slashed { return Err("certificate contains ineligible validator".to_string()); }
-            unique.push(id.clone());
+        for vote in &cert.votes {
+            if vote.chain_id != cert.chain_id || vote.height != cert.height || vote.round != cert.round || vote.block_hash != cert.block_hash {
+                return Err("certificate contains a mismatched vote".to_string());
+            }
+            if unique.contains(&vote.validator_id) { return Err("duplicate voter in certificate".to_string()); }
+            self.verify_vote(vote, validators)?;
+            unique.push(vote.validator_id.clone());
         }
         if !self.has_quorum(validators, &unique) { return Err("certificate quorum not reached".to_string()); }
         Ok(())
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::validator::ValidatorInfo;
+    use ed25519_dalek::SigningKey;
+    use rand::rngs::OsRng;
+
+    #[test]
+    fn certificate_requires_real_signed_votes() {
+        let keys = [SigningKey::generate(&mut OsRng), SigningKey::generate(&mut OsRng), SigningKey::generate(&mut OsRng)];
+        let mut set = ValidatorSet::new();
+        for (i, key) in keys.iter().enumerate() {
+            set.add_validator(ValidatorInfo {
+                id: format!("v{}", i + 1),
+                public_key: format!("ed25519:{}", hex::encode(key.verifying_key().to_bytes())),
+                stake: 100,
+                commission: 500,
+                active: true,
+                jailed: false,
+                slashed: false,
+            }).unwrap();
+        }
+
+        let consensus = Consensus::new();
+        let block = Block {
+            index: 1, round: 0, chain_id: "test-chain".into(), prev_hash: "0".into(),
+            transactions: vec![], timestamp: 1, proposer: "v1".into(),
+            proposer_signature: String::new(), hash: "block-hash".into(), gas_used: 0,
+        };
+        let votes = (0..3).map(|i| consensus.sign_vote(
+            &format!("v{}", i + 1), "test-chain", 1, 0, "block-hash", &keys[i],
+        )).collect::<Vec<_>>();
+
+        let cert = consensus.build_certificate(&block, &votes, &set).unwrap();
+        assert_eq!(cert.votes.len(), 3);
+        assert!(consensus.verify_certificate(&block, &cert, &set).is_ok());
+
+        let mut forged = cert.clone();
+        forged.votes[0].signature = "00".repeat(64);
+        assert!(consensus.verify_certificate(&block, &forged, &set).is_err());
     }
 }
