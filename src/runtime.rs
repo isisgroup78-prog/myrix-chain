@@ -16,7 +16,7 @@ fn vote_key(height: u64, round: u64, hash: &str, validator: &str) -> Vec<u8> {
     format!("votes/{height:020}/{round:020}/{hash}/{validator}").into_bytes()
 }
 fn cert_key(height: u64) -> Vec<u8> { format!("certs/{height:020}").into_bytes() }
-fn proposal_key(height: u64) -> Vec<u8> { format!("proposals/{height:020}").into_bytes() }
+fn proposal_key(height: u64, round: u64) -> Vec<u8> { format!("proposals/{height:020}/{round:020}").into_bytes() }
 
 #[derive(Clone)]
 pub struct ChainRuntime {
@@ -135,11 +135,11 @@ impl ChainRuntime {
     }
 
     pub fn store_proposal(&self, block: &Block) -> Result<(), String> {
-        self.store.put_json(&proposal_key(block.index), block)
+        self.store.put_json(&proposal_key(block.index, block.round), block)
     }
 
-    pub fn proposal(&self, height: u64) -> Result<Option<Block>, String> {
-        self.store.get_json(&proposal_key(height))
+    pub fn proposal(&self, height: u64, round: u64) -> Result<Option<Block>, String> {
+        self.store.get_json(&proposal_key(height, round))
     }
 
     pub fn record_vote(&self, vote: &Vote) -> Result<(), String> {
