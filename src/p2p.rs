@@ -178,7 +178,7 @@ pub async fn run_server(
     }
 }
 
-pub async fn run_validator(
+#[allow(clippy::too_many_arguments)]\npub async fn run_validator(
     listen_addr: &str,
     node_id: String,
     chain_id: String,
