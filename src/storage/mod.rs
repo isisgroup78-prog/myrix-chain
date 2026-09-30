@@ -23,6 +23,14 @@ impl RocksDbStore {
             None => Ok(None),
         }
     }
+
+    pub fn scan_prefix(&self, prefix: &[u8]) -> Vec<Vec<u8>> {
+        use rocksdb::{Direction, IteratorMode};
+        self.db.iterator(IteratorMode::From(prefix, Direction::Forward))
+            .take_while(|item| item.as_ref().map(|(k, _)| k.starts_with(prefix)).unwrap_or(false))
+            .filter_map(|item| item.ok().map(|(_, v)| v.to_vec()))
+            .collect()
+    }
 }
 
 impl Store for RocksDbStore {
