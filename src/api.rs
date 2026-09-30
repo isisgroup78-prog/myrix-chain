@@ -99,6 +99,19 @@ async fn prometheus_metrics(State(state):State<Arc<AppState>>)->(StatusCode,Stri
 }
 
 
+fn parse_evm_address(value: &str) -> Result<revm::primitives::Address, String> {
+    let raw = value.strip_prefix("0x").unwrap_or(value);
+    if raw.len() != 40 { return Err("EVM address must contain 20 bytes".to_string()); }
+    let bytes = hex::decode(raw).map_err(|_| "invalid EVM address".to_string())?;
+    revm::primitives::Address::try_from(bytes.as_slice()).map_err(|_| "invalid EVM address".to_string())
+}
+
+fn parse_evm_u256(value: &str) -> Result<revm::primitives::U256, String> {
+    let raw = value.strip_prefix("0x").unwrap_or(value);
+    if raw.is_empty() { return Ok(revm::primitives::U256::ZERO); }
+    revm::primitives::U256::from_str_radix(raw, 16).map_err(|_| "invalid EVM quantity".to_string())
+}
+
 fn execute_json_rpc(state: &AppState, method: &str, params: serde_json::Value) -> Result<serde_json::Value, String> {
     match method {
         "status" => serde_json::to_value(state.runtime.status()).map_err(|e| e.to_string()),
@@ -128,6 +141,34 @@ fn execute_json_rpc(state: &AppState, method: &str, params: serde_json::Value) -
                 .ok_or_else(|| "transaction not found".to_string())
         }
         "getValidators" => serde_json::to_value(&*state.runtime.validators).map_err(|e| e.to_string()),
+        "eth_chainId" => {
+            let chain_id = std::env::var("EVM_CHAIN_ID").map_err(|_| "EVM_CHAIN_ID is not configured".to_string())?;
+            let value = chain_id.parse::<u64>().map_err(|_| "EVM_CHAIN_ID must be a decimal u64".to_string())?;
+            Ok(serde_json::Value::String(format!("0x{value:x}")))
+        }
+        "eth_blockNumber" => Ok(serde_json::Value::String(format!("0x{:x}", state.runtime.status().height))),
+        "eth_getBalance" => {
+            let address = params.get(0).and_then(|v| v.as_str()).or_else(|| params.get("address").and_then(|v| v.as_str())).ok_or("address is required".to_string())?;
+            let address = parse_evm_address(address)?;
+            let balance = state.runtime.evm.account(address)?.map(|a| revm::primitives::U256::from_be_bytes(a.balance));
+            Ok(serde_json::Value::String(format!("0x{:x}", balance.unwrap_or(revm::primitives::U256::ZERO))))
+        }
+        "eth_getCode" => {
+            let address = params.get(0).and_then(|v| v.as_str()).or_else(|| params.get("address").and_then(|v| v.as_str())).ok_or("address is required".to_string())?;
+            let address = parse_evm_address(address)?;
+            let code_hash = state.runtime.evm.account(address)?.map(|a| revm::primitives::B256::from(a.code_hash));
+            let code = code_hash.and_then(|hash| state.runtime.evm.code(hash)).unwrap_or_default();
+            Ok(serde_json::Value::String(format!("0x{}", hex::encode(code))))
+        }
+        "eth_getStorageAt" => {
+            let address = params.get(0).and_then(|v| v.as_str()).or_else(|| params.get("address").and_then(|v| v.as_str())).ok_or("address is required".to_string())?;
+            let slot = params.get(1).and_then(|v| v.as_str()).or_else(|| params.get("slot").and_then(|v| v.as_str())).ok_or("slot is required".to_string())?;
+            let address = parse_evm_address(address)?;
+            let slot = parse_evm_u256(slot)?;
+            let value = state.runtime.evm.storage(address, slot)?;
+            Ok(serde_json::Value::String(format!("0x{}", hex::encode(value.to_be_bytes::<32>()))))
+        }
+        "myrix_evmStateCommitment" => Ok(serde_json::Value::String(format!("0x{}", hex::encode(state.runtime.evm.commitment())))),
         "sendTransaction" => {
             let raw = params.get("transaction").cloned().ok_or("transaction is required".to_string())?;
             let tx: crate::core::Transaction = serde_json::from_value(raw).map_err(|e| e.to_string())?;
