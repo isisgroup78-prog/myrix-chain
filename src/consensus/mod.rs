@@ -49,12 +49,12 @@ impl Consensus {
         format!("MYRIX-VOTE-V1|{chain_id}|{height}|{round}|{block_hash}").into_bytes()
     }
 
-    pub fn validate_block(&self, block: &Block, validators: &ValidatorSet, expected_height: u64, prev_hash: &str) -> Result<(), String> {
+    pub fn validate_block(&self, block: &Block, validators: &ValidatorSet, expected_height: u64, prev_hash: &str, expected_chain_id: &str) -> Result<(), String> {
         if validators.active_validators().len() < self.config.min_validators as usize {
             return Err("not enough active validators".to_string());
         }
         if !validators.contains_active(&block.proposer) { return Err("proposer is not an active validator".to_string()); }
-        block.validate_header(expected_height, prev_hash, &block.chain_id)?;
+        block.validate_header(expected_height, prev_hash, expected_chain_id)?;
         let expected = self.leader_for_round(block.round, validators).ok_or("no leader available")?;
         if expected != block.proposer { return Err("block proposer is not the deterministic leader".to_string()); }
         let validator = validators.validators.get(&block.proposer).ok_or("unknown proposer")?;
