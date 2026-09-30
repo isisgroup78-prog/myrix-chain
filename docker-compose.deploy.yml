@@ -12,7 +12,7 @@ services:
       DB_PATH: "/var/lib/myrix"
     volumes: [myrix_api_data:/var/lib/myrix]
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health >/dev/null"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health >/dev/null"]
       interval: 15s
       timeout: 5s
       retries: 5
