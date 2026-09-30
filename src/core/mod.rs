@@ -143,9 +143,11 @@ impl Ledger {
 
     pub fn apply_block(&mut self, block: &Block) -> Result<(), String> {
         block.validate_header(self.height + 1, &self.last_hash)?;
-        for tx in &block.transactions { self.apply_transaction(tx)?; }
-        self.height = block.index;
-        self.last_hash = block.hash.clone();
+        let mut next = self.clone();
+        for tx in &block.transactions { next.apply_transaction(tx)?; }
+        next.height = block.index;
+        next.last_hash = block.hash.clone();
+        *self = next;
         Ok(())
     }
 }
