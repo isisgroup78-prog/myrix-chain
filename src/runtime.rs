@@ -162,7 +162,7 @@ impl ChainRuntime {
 
     pub fn validate_block(&self, block: &Block, consensus: &Consensus) -> Result<(), String> {
         let ledger = self.ledger.read().map_err(|_| "ledger lock poisoned")?;
-        consensus.validate_block(block, &self.validators, ledger.height + 1, &ledger.last_hash)
+        consensus.validate_block(block, &self.validators, ledger.height + 1, &ledger.last_hash, &block.chain_id)
     }
 
     pub fn commit_block(&self, block: &Block, cert: &CommitCertificate, consensus: &Consensus) -> Result<(), String> {
