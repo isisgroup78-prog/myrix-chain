@@ -99,6 +99,46 @@ async fn prometheus_metrics(State(state):State<Arc<AppState>>)->(StatusCode,Stri
 }
 
 
+fn execute_json_rpc(state: &AppState, method: &str, params: serde_json::Value) -> Result<serde_json::Value, String> {
+    match method {
+        "status" => serde_json::to_value(state.runtime.status()).map_err(|e| e.to_string()),
+        "getBalance" => {
+            let address = params.get("address").and_then(|v| v.as_str()).ok_or("address is required".to_string())?;
+            let account = state.runtime.account(address)?;
+            Ok(serde_json::json!({
+                "address": address,
+                "balance": account.as_ref().map(|a| a.balance).unwrap_or(0),
+                "nonce": account.as_ref().map(|a| a.nonce).unwrap_or(0)
+            }))
+        }
+        "getBlock" => {
+            let height = if params.get("height").and_then(|v| v.as_str()) == Some("latest") || params.get("height").is_none() {
+                state.runtime.status().height
+            } else {
+                params.get("height").and_then(|v| v.as_u64()).ok_or("invalid height".to_string())?
+            };
+            state.runtime.block(height)?
+                .map(serde_json::to_value).transpose().map_err(|e| e.to_string())?
+                .ok_or_else(|| "block not found".to_string())
+        }
+        "getTransaction" => {
+            let hash = params.get("hash").and_then(|v| v.as_str()).ok_or("hash is required".to_string())?;
+            state.runtime.transaction(hash)?
+                .map(serde_json::to_value).transpose().map_err(|e| e.to_string())?
+                .ok_or_else(|| "transaction not found".to_string())
+        }
+        "getValidators" => serde_json::to_value(&*state.runtime.validators).map_err(|e| e.to_string()),
+        "sendTransaction" => {
+            let raw = params.get("transaction").cloned().ok_or("transaction is required".to_string())?;
+            let tx: crate::core::Transaction = serde_json::from_value(raw).map_err(|e| e.to_string())?;
+            state.runtime.submit_transaction(&tx).map(|hash| serde_json::json!({
+                "accepted": true, "hash": hash
+            }))
+        }
+        _ => Err("method not found".to_string()),
+    }
+}
+
 async fn json_rpc(
     State(state): State<Arc<AppState>>,
     AxumJson(request): AxumJson<serde_json::Value>,
@@ -107,47 +147,7 @@ async fn json_rpc(
     let method = request.get("method").and_then(|v| v.as_str()).unwrap_or("");
     let params = request.get("params").cloned().unwrap_or(serde_json::Value::Null);
 
-    let result = match method {
-        "status" => serde_json::to_value(state.runtime.status()).map_err(|e| e.to_string()),
-        "getBalance" => {
-            let address = params.get("address").and_then(|v| v.as_str()).ok_or("address is required".to_string());
-            address.and_then(|address| state.runtime.account(address).map_err(|e| e.to_string()))
-                .map(|account| serde_json::json!({
-                    "address": params.get("address").and_then(|v| v.as_str()).unwrap_or_default(),
-                    "balance": account.map(|a| a.balance).unwrap_or(0),
-                    "nonce": account.map(|a| a.nonce).unwrap_or(0)
-                }))
-        }
-        "getBlock" => {
-            let height = if params.get("height").and_then(|v| v.as_str()) == Some("latest") || params.get("height").is_none() {
-                state.runtime.status().height
-            } else {
-                params.get("height").and_then(|v| v.as_u64()).ok_or("invalid height".to_string())?
-            };
-            state.runtime.block(height).map_err(|e| e.to_string())?
-                .map(serde_json::to_value).transpose().map_err(|e| e.to_string())?
-                .ok_or_else(|| "block not found".to_string())
-        }
-        "getTransaction" => {
-            let hash = params.get("hash").and_then(|v| v.as_str()).ok_or("hash is required".to_string())?;
-            state.runtime.transaction(hash).map_err(|e| e.to_string())?
-                .map(serde_json::to_value).transpose().map_err(|e| e.to_string())?
-                .ok_or_else(|| "transaction not found".to_string())
-        }
-        "getValidators" => serde_json::to_value(&*state.runtime.validators).map_err(|e| e.to_string()),
-        "sendTransaction" => {
-            let tx: crate::core::Transaction = serde_json::from_value(
-                params.get("transaction").cloned().ok_or("transaction is required".to_string())?
-            ).map_err(|e| e.to_string())?;
-            state.runtime.submit_transaction(&tx).map(|hash| serde_json::json!({
-                "accepted": true,
-                "hash": hash
-            }))
-        }
-        _ => Err("method not found".to_string()),
-    };
-
-    match result {
+    match execute_json_rpc(&state, method, params) {
         Ok(value) => (StatusCode::OK, Json(serde_json::json!({
             "jsonrpc": "2.0", "id": id, "result": value
         }))),
