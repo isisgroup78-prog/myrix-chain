@@ -45,14 +45,21 @@ impl ChainRuntime {
                 let mut ledger = Ledger::new();
                 let genesis: serde_json::Value = serde_json::from_str(include_str!("../genesis/genesis.json"))
                     .map_err(|e| format!("invalid genesis: {e}"))?;
-                if let Some(allocations) = genesis.get("allocations").and_then(|v| v.as_array()) {
-                    for allocation in allocations {
-                        let address = allocation.get("address").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-                        let balance = allocation.get("amount").and_then(|v| v.as_str()).and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
-                        if !address.is_empty() {
-                            ledger.accounts.insert(address.clone(), crate::core::Account { id: address, balance, nonce: 0 });
-                        }
-                    }
+                let allocations = genesis.get("allocations").and_then(|v| v.as_array()).ok_or("genesis allocations missing")?;
+                let initial_supply = genesis.get("initial_supply").and_then(|v| v.as_str())
+                    .ok_or("genesis initial_supply missing")?.parse::<u64>().map_err(|_| "invalid genesis initial_supply")?;
+                let mut allocation_total = 0u64;
+                for allocation in allocations {
+                    let address = allocation.get("address").and_then(|v| v.as_str()).ok_or("genesis allocation address missing")?.to_string();
+                    if address.is_empty() { return Err("genesis allocation address is empty".to_string()); }
+                    let balance = allocation.get("amount").and_then(|v| v.as_str()).ok_or("genesis allocation amount missing")?
+                        .parse::<u64>().map_err(|_| "invalid genesis allocation amount")?;
+                    if ledger.accounts.contains_key(&address) { return Err("duplicate genesis allocation address".to_string()); }
+                    allocation_total = allocation_total.checked_add(balance).ok_or("genesis allocation overflow")?;
+                    ledger.accounts.insert(address.clone(), crate::core::Account { id: address, balance, nonce: 0 });
+                }
+                if allocation_total != initial_supply {
+                    return Err(format!("genesis allocation total {allocation_total} does not match initial supply {initial_supply}"));
                 }
                 store.put_json(LEDGER_KEY, &ledger)?;
                 ledger
