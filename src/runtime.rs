@@ -139,6 +139,13 @@ impl ChainRuntime {
     }
 
     pub fn record_vote(&self, vote: &Vote) -> Result<(), String> {
+        let prefix = format!("votes/{:020}/{:020}/", vote.height, vote.round).into_bytes();
+        for value in self.store.scan_prefix(&prefix) {
+            let existing: Vote = serde_json::from_slice(&value).map_err(|e| e.to_string())?;
+            if existing.validator_id == vote.validator_id && existing.block_hash != vote.block_hash {
+                return Err("validator already voted for another block in this round".to_string());
+            }
+        }
         let key = vote_key(vote.height, vote.round, &vote.block_hash, &vote.validator_id);
         if self.store.get(&key).is_none() { self.store.put_json(&key, vote)?; }
         Ok(())
