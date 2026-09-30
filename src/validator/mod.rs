@@ -60,8 +60,16 @@ impl ValidatorSet {
         None
     }
 
+    pub fn active_stake(&self) -> u64 {
+        self.validators.values()
+            .filter(|v| v.active && !v.jailed && !v.slashed)
+            .map(|v| v.stake)
+            .sum()
+    }
+
     pub fn quorum(&self) -> u64 {
-        (self.total_stake.saturating_mul(2) / 3).saturating_add(1)
+        let active = self.active_stake();
+        (active.saturating_mul(2) / 3).saturating_add(1)
     }
 
     pub fn voting_power(&self, ids: &[String]) -> u64 {
