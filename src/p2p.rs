@@ -61,7 +61,7 @@ async fn handle_connection(
 
 pub async fn run_server(
     listen_addr: &str,
-    node_id: String,
+    _node_id: String,
     chain_id: String,
     runtime: Arc<ChainRuntime>,
     max_peers: usize,
@@ -75,10 +75,8 @@ pub async fn run_server(
         let permit = slots.clone().acquire_owned().await.map_err(|e| e.to_string())?;
         let chain = chain_id.clone();
         let runtime = runtime.clone();
-        let node = node_id.clone();
         tokio::spawn(async move {
             let result = async {
-                let _ = &node;
                 handle_connection(stream, chain, runtime).await
             }.await;
             if let Err(e) = result { tracing::debug!(%peer, error=%e, "P2P connection closed"); }
