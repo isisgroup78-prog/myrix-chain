@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use sha2::{Digest, Sha256};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ValidatorInfo {
@@ -14,7 +15,7 @@ pub struct ValidatorInfo {
 
 impl ValidatorInfo {
     pub fn new(id: String, public_key: String, stake: u64) -> Self {
-        Self { id, public_key, stake, commission: 50, active: true, jailed: false, slashed: false }
+        Self { id, public_key, stake, commission: 500, active: true, jailed: false, slashed: false }
     }
 }
 
@@ -76,7 +77,14 @@ impl ValidatorSet {
         if active.is_empty() { return None; }
         let total: u128 = active.iter().map(|v| v.stake as u128).sum();
         if total == 0 { return None; }
-        let mut target = (round as u128) % total;
+        let mut seed = Sha256::new();
+        seed.update(round.to_le_bytes());
+        seed.update(self.epoch.to_le_bytes());
+        for v in &active { seed.update(v.id.as_bytes()); seed.update(v.stake.to_le_bytes()); }
+        let digest = seed.finalize();
+        let mut raw = [0u8; 16];
+        raw.copy_from_slice(&digest[..16]);
+        let mut target = u128::from_le_bytes(raw) % total;
         for v in active {
             let stake = v.stake as u128;
             if target < stake { return Some(v.id.clone()); }
