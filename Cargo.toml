@@ -15,6 +15,10 @@ path = "src/bin/validator.rs"
 name = "node"
 path = "src/bin/node.rs"
 
+[[bin]]
+name = "keygen"
+path = "src/bin/keygen.rs"
+
 [dependencies]
 anyhow = "1.0"
 axum = "0.7"
