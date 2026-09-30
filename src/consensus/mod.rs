@@ -1,5 +1,6 @@
 use crate::{core::{Block, Ledger}, security, validator::ValidatorSet};
 use ed25519_dalek::SigningKey;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug)]
