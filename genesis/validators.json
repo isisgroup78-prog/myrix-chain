@@ -1,23 +1,5 @@
 [
-  {
-    "id": "validator-01",
-    "public_key": "ed25519:validator01_public_key",
-    "stake": 1000000,
-    "network": "0.0.0.0:9000",
-    "status": "active"
-  },
-  {
-    "id": "validator-02",
-    "public_key": "ed25519:validator02_public_key",
-    "stake": 1000000,
-    "network": "0.0.0.0:9001",
-    "status": "active"
-  },
-  {
-    "id": "validator-03",
-    "public_key": "ed25519:validator03_public_key",
-    "stake": 1000000,
-    "network": "0.0.0.0:9002",
-    "status": "active"
-  }
+  {"id":"validator-01","public_key":"ed25519:REPLACE_WITH_REAL_32_BYTE_HEX_KEY","stake":1000000,"network":"REPLACE_WITH_PUBLIC_ADDRESS:9000","status":"active","commission_bps":500},
+  {"id":"validator-02","public_key":"ed25519:REPLACE_WITH_REAL_32_BYTE_HEX_KEY","stake":1000000,"network":"REPLACE_WITH_PUBLIC_ADDRESS:9001","status":"active","commission_bps":500},
+  {"id":"validator-03","public_key":"ed25519:REPLACE_WITH_REAL_32_BYTE_HEX_KEY","stake":1000000,"network":"REPLACE_WITH_PUBLIC_ADDRESS:9002","status":"active","commission_bps":500}
 ]
