@@ -25,15 +25,18 @@ fn empty_block_has_valid_hash_and_chain_link() {
     let mut ledger = Ledger::new();
     let mut block = Block {
         index: 1,
+        round: 0,
+        chain_id: "test-chain".into(),
         prev_hash: "0".into(),
         transactions: vec![],
         timestamp: 1,
         proposer: "validator-a".into(),
+        proposer_signature: "test-signature".into(),
         hash: String::new(),
         gas_used: 0,
     };
     block.hash = block.compute_hash();
-    assert!(block.validate_header(1, "0").is_ok());
+    assert!(block.validate_header(1, "0", "test-chain").is_ok());
     assert!(ledger.apply_block(&block).is_ok());
     assert_eq!(ledger.height, 1);
     assert_eq!(ledger.last_hash, block.hash);
