@@ -1,5 +1,6 @@
 use crate::{
     consensus::{CommitCertificate, Consensus, Vote},
+    storage::Store,
     core::{Block, Ledger, Transaction},
     storage::RocksDbStore,
     validator::ValidatorSet,
@@ -99,7 +100,7 @@ impl ChainRuntime {
     }
 
     pub fn mempool(&self) -> Result<Vec<Transaction>, String> {
-        let mut out = Vec::new();
+        let mut out: Vec<Transaction> = Vec::new();
         for value in self.store.scan_prefix(b"mempool/") {
             out.push(serde_json::from_slice(&value).map_err(|e| e.to_string())?);
         }
