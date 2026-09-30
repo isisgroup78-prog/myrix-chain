@@ -1,4 +1,4 @@
-use crate::{core::Block, security, validator::ValidatorSet};
+use crate::{core::{Block, Ledger}, security, validator::ValidatorSet};
 use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 
@@ -49,17 +49,18 @@ impl Consensus {
         format!("MYRIX-VOTE-V1|{chain_id}|{height}|{round}|{block_hash}").into_bytes()
     }
 
-    pub fn validate_block(&self, block: &Block, validators: &ValidatorSet, expected_height: u64, prev_hash: &str, expected_chain_id: &str) -> Result<(), String> {
+    pub fn validate_block(&self, block: &Block, validators: &ValidatorSet, ledger: &Ledger, expected_chain_id: &str) -> Result<(), String> {
         if validators.active_validators().len() < self.config.min_validators as usize {
             return Err("not enough active validators".to_string());
         }
         if !validators.contains_active(&block.proposer) { return Err("proposer is not an active validator".to_string()); }
-        block.validate_header(expected_height, prev_hash, expected_chain_id)?;
+        block.validate_header(ledger.height + 1, &ledger.last_hash, expected_chain_id)?;
         let expected = self.leader_for_round(block.round, validators).ok_or("no leader available")?;
         if expected != block.proposer { return Err("block proposer is not the deterministic leader".to_string()); }
         let validator = validators.validators.get(&block.proposer).ok_or("unknown proposer")?;
         security::verify_ed25519(&validator.public_key, &block.signing_bytes(), &block.proposer_signature)?;
-        for tx in &block.transactions { tx.validate(None)?; }
+        let mut candidate = ledger.clone();
+        for tx in &block.transactions { candidate.apply_transaction(tx)?; }
         Ok(())
     }
 
