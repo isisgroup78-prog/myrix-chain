@@ -36,7 +36,9 @@ pub struct CommitCertificate {
     pub votes: Vec<Vote>,
 }
 
-impl Default for Consensus { fn default() -> Self { Self::new() } }\n\nimpl Consensus {
+impl Default for Consensus { fn default() -> Self { Self::new() } }
+
+impl Consensus {
     pub fn new() -> Self {
         Self { epoch: 0, config: ConsensusConfig { epoch_length: 100, quorum_bps: 6700, min_validators: 3 } }
     }
