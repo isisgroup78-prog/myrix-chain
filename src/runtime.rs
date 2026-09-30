@@ -61,6 +61,39 @@ impl ChainRuntime {
         Ok(tx.hash.clone())
     }
 
+    pub fn mempool(&self) -> Result<Vec<Transaction>, String> {
+        let mut out = Vec::new();
+        let mut iterator = self.store.raw_iter_prefix(b"mempool/");
+        while let Some((_, value)) = iterator.next() {
+            out.push(serde_json::from_slice(&value).map_err(|e| e.to_string())?);
+        }
+        out.sort_by(|a: &Transaction, b: &Transaction| a.hash.cmp(&b.hash));
+        Ok(out)
+    }
+
+    pub fn build_block(&self, proposer: String, timestamp: u64, max_transactions: usize) -> Result<Block, String> {
+        let current = self.ledger.read().map_err(|_| "ledger lock poisoned")?.clone();
+        let mut candidate = current.clone();
+        let mut transactions = Vec::new();
+        for tx in self.mempool()?.into_iter().take(max_transactions) {
+            if candidate.apply_transaction(&tx).is_ok() {
+                transactions.push(tx);
+            }
+        }
+        let index = current.height.checked_add(1).ok_or("block height overflow")?;
+        let mut block = Block {
+            index,
+            prev_hash: current.last_hash,
+            transactions,
+            timestamp,
+            proposer,
+            hash: String::new(),
+            gas_used: 0,
+        };
+        block.hash = block.compute_hash();
+        Ok(block)
+    }
+
     pub fn commit_block(&self, block: &Block) -> Result<(), String> {
         let mut ledger = self.ledger.write().map_err(|_| "ledger lock poisoned")?;
         let mut next = ledger.clone();
