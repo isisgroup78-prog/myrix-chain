@@ -227,6 +227,9 @@ pub async fn run_validator(
     loop {
         let status = runtime.status();
         let height = status.height + 1;
+        if let Some(peer) = peers.first() {
+            let _ = sync_from_peer(peer, &node_id, &chain_id, runtime.clone(), height, height.saturating_add(100)).await;
+        }
         if height != proposed_height {
             round = 0;
             proposed_height = height;
@@ -256,6 +259,39 @@ pub async fn run_validator(
         round = round.saturating_add(1);
         tokio::time::sleep(interval).await;
     }
+}
+
+pub async fn sync_from_peer(
+    address: &str,
+    node_id: &str,
+    chain_id: &str,
+    runtime: Arc<ChainRuntime>,
+    from: u64,
+    to: u64,
+) -> Result<u64, String> {
+    if from > to { return Ok(0); }
+    let mut stream = TcpStream::connect(address).await.map_err(|e| e.to_string())?;
+    write_message(&mut stream, &Message::Hello {
+        node_id: node_id.to_string(),
+        chain_id: chain_id.to_string(),
+        protocol: PROTOCOL,
+    }).await?;
+    match read_message(&mut stream).await? {
+        Message::Pong => {}
+        _ => return Err("handshake rejected".to_string()),
+    }
+    write_message(&mut stream, &Message::RequestBlocks { from, to }).await?;
+    let response = read_message(&mut stream).await?;
+    let Message::Blocks(bundles) = response else { return Err("unexpected sync response".to_string()); };
+    let consensus = Consensus::new();
+    let mut committed = 0;
+    for bundle in bundles {
+        runtime.store_proposal(&bundle.block)?;
+        if runtime.commit_block(&bundle.block, &bundle.certificate, &consensus).is_ok() {
+            committed += 1;
+        }
+    }
+    Ok(committed)
 }
 
 pub async fn connect_and_submit(address: &str, node_id: String, chain_id: String, tx: Transaction) -> Result<(), String> {
