@@ -3,6 +3,13 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
+fn address_from_public_key_hex(public_key: &str) -> Result<String, String> {
+    let key = public_key.strip_prefix("ed25519:").unwrap_or(public_key);
+    let bytes = hex::decode(key).map_err(|_| "invalid public key encoding".to_string())?;
+    if bytes.len() != 32 { return Err("public key must be 32 bytes".to_string()); }
+    Ok(format!("0x{}", &key[..40]))
+}
+
 fn sha256_hex(data: &[u8]) -> String {
     let mut h = Sha256::new();
     h.update(data);
@@ -60,6 +67,7 @@ impl Transaction {
             return Err("transaction hash mismatch".to_string());
         }
         self.verify_signature()?;
+        if address_from_public_key_hex(&self.public_key)? != self.sender { return Err("sender does not match public key".to_string()); }
         if let Some(account) = account {
             if account.nonce != self.nonce {
                 return Err(format!("invalid nonce: expected {}", account.nonce));
