@@ -97,12 +97,15 @@ impl ChainRuntime {
         let mut ledger = self.ledger.write().map_err(|_| "ledger lock poisoned")?;
         let mut next = ledger.clone();
         next.apply_block(block)?;
-        self.store.put_json(&block_key(block.index), block)?;
+        let mut puts = Vec::with_capacity(block.transactions.len() + 2);
+        puts.push((block_key(block.index), serde_json::to_vec(block).map_err(|e| e.to_string())?));
+        puts.push((LEDGER_KEY.to_vec(), serde_json::to_vec(&next).map_err(|e| e.to_string())?));
+        let mut deletes = Vec::with_capacity(block.transactions.len());
         for tx in &block.transactions {
-            self.store.put_json(&tx_key(&tx.hash), tx)?;
-            let _ = self.store.delete(&mempool_key(&tx.hash));
+            puts.push((tx_key(&tx.hash), serde_json::to_vec(tx).map_err(|e| e.to_string())?));
+            deletes.push(mempool_key(&tx.hash));
         }
-        self.store.put_json(LEDGER_KEY, &next)?;
+        self.store.write_batch(puts, deletes)?;
         *ledger = next;
         Ok(())
     }
