@@ -7,7 +7,7 @@ use crate::{
 };
 use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 const LEDGER_KEY: &[u8] = b"state/ledger";
 fn block_key(height: u64) -> Vec<u8> { format!("blocks/{height:020}").into_bytes() }
@@ -25,6 +25,7 @@ pub struct ChainRuntime {
     pub store: Arc<RocksDbStore>,
     pub validators: Arc<ValidatorSet>,
     pub chain_id: String,
+    mempool_lock: Arc<Mutex<()>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -70,7 +71,7 @@ impl ChainRuntime {
         let genesis: serde_json::Value = serde_json::from_str(include_str!("../genesis/genesis.json"))
             .map_err(|e| format!("invalid genesis: {e}"))?;
         let chain_id = genesis.get("chain_id").and_then(|v| v.as_str()).ok_or("genesis chain_id missing")?.to_string();
-        Ok(Self { ledger: Arc::new(RwLock::new(ledger)), store, validators, chain_id })
+        Ok(Self { ledger: Arc::new(RwLock::new(ledger)), store, validators, chain_id, mempool_lock: Arc::new(Mutex::new(())) })
     }
 
     pub fn status(&self) -> RuntimeStatus {
@@ -86,6 +87,7 @@ impl ChainRuntime {
     }
 
     pub fn submit_transaction(&self, tx: &Transaction) -> Result<String, String> {
+        let _guard = self.mempool_lock.lock().map_err(|_| "mempool lock poisoned")?;
         let ledger = self.ledger.read().map_err(|_| "ledger lock poisoned")?;
         tx.validate(ledger.accounts.get(&tx.sender))?;
         drop(ledger);
