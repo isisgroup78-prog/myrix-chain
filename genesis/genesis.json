@@ -8,35 +8,20 @@
     "type": "bft-pos",
     "block_time_ms": 1200,
     "epoch_length": 100,
-    "quorum": 0.67,
+    "quorum_bps": 6700,
     "max_validators": 128,
     "min_validator_stake": 1000000
   },
   "validators": [
-    {
-      "id": "validator-01",
-      "public_key": "ed25519:validator01_public_key",
-      "stake": "1000000",
-      "commission": 0.05
-    },
-    {
-      "id": "validator-02",
-      "public_key": "ed25519:validator02_public_key",
-      "stake": "1000000",
-      "commission": 0.05
-    },
-    {
-      "id": "validator-03",
-      "public_key": "ed25519:validator03_public_key",
-      "stake": "1000000",
-      "commission": 0.05
-    }
+    {"id": "validator-01", "public_key": "ed25519:REPLACE_WITH_REAL_32_BYTE_HEX_KEY", "stake": "1000000", "commission_bps": 500},
+    {"id": "validator-02", "public_key": "ed25519:REPLACE_WITH_REAL_32_BYTE_HEX_KEY", "stake": "1000000", "commission_bps": 500},
+    {"id": "validator-03", "public_key": "ed25519:REPLACE_WITH_REAL_32_BYTE_HEX_KEY", "stake": "1000000", "commission_bps": 500}
   ],
   "allocations": [
-    { "address": "0xfoundation", "amount": "200000000" },
-    { "address": "0xcommunity", "amount": "200000000" },
-    { "address": "0xvalidators", "amount": "300000000" },
-    { "address": "0xtreasury", "amount": "200000000" },
-    { "address": "0xecosystem", "amount": "100000000" }
+    {"address": "0xfoundation", "amount": "200000000"},
+    {"address": "0xcommunity", "amount": "200000000"},
+    {"address": "0xvalidators", "amount": "300000000"},
+    {"address": "0xtreasury", "amount": "200000000"},
+    {"address": "0xecosystem", "amount": "100000000"}
   ]
 }
