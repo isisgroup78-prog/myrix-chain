@@ -31,6 +31,14 @@ impl RocksDbStore {
         self.db.write(batch).map_err(|e| e.to_string())
     }
 
+    pub fn scan_prefix_entries(&self, prefix: &[u8]) -> Vec<(Vec<u8>, Vec<u8>)> {
+        use rocksdb::{Direction, IteratorMode};
+        self.db.iterator(IteratorMode::From(prefix, Direction::Forward))
+            .take_while(|item| item.as_ref().map(|(k, _)| k.starts_with(prefix)).unwrap_or(false))
+            .filter_map(|item| item.ok().map(|(k, v)| (k.to_vec(), v.to_vec())))
+            .collect()
+    }
+
     pub fn scan_prefix(&self, prefix: &[u8]) -> Vec<Vec<u8>> {
         use rocksdb::{Direction, IteratorMode};
         self.db.iterator(IteratorMode::From(prefix, Direction::Forward))
