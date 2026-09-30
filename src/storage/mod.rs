@@ -24,6 +24,13 @@ impl RocksDbStore {
         }
     }
 
+    pub fn write_batch(&self, puts: Vec<(Vec<u8>, Vec<u8>)>, deletes: Vec<Vec<u8>>) -> Result<(), String> {
+        let mut batch = rocksdb::WriteBatch::default();
+        for (key, value) in puts { batch.put(key, value); }
+        for key in deletes { batch.delete(key); }
+        self.db.write(batch).map_err(|e| e.to_string())
+    }
+
     pub fn scan_prefix(&self, prefix: &[u8]) -> Vec<Vec<u8>> {
         use rocksdb::{Direction, IteratorMode};
         self.db.iterator(IteratorMode::From(prefix, Direction::Forward))
