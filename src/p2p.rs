@@ -106,3 +106,22 @@ pub async fn connect_and_submit(
         _ => Err("unexpected P2P response".to_string()),
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn message_round_trip() {
+        let message = Message::Hello { node_id: "node-a".into(), chain_id: "myrix-mainnet-1".into() };
+        let bytes = serde_json::to_vec(&message).unwrap();
+        let decoded: Message = serde_json::from_slice(&bytes).unwrap();
+        match decoded {
+            Message::Hello { node_id, chain_id } => {
+                assert_eq!(node_id, "node-a");
+                assert_eq!(chain_id, "myrix-mainnet-1");
+            }
+            _ => panic!("wrong message variant"),
+        }
+    }
+}
