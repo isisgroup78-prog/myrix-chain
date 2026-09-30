@@ -109,7 +109,7 @@ async fn handle_connection(
                 consensus.verify_vote(&vote, &runtime.validators)?;
                 runtime.record_vote(&vote)?;
                 let height = vote.height;
-                if let Some(block) = runtime.proposal(height)? {
+                if let Some(block) = runtime.proposal(height, vote.round)? {
                     let votes = runtime.votes_for(height, vote.round, &vote.block_hash)?;
                     if let Ok(cert) = consensus.build_certificate(&block, &votes, &runtime.validators) {
                         if runtime.commit_block(&block, &cert, &consensus).is_ok() {
@@ -119,7 +119,7 @@ async fn handle_connection(
                 }
             }
             Message::Certificate(cert) => {
-                if let Some(block) = runtime.proposal(cert.height)? {
+                if let Some(block) = runtime.proposal(cert.height, cert.round)? {
                     consensus.verify_certificate(&block, &cert, &runtime.validators)?;
                     let _ = runtime.commit_block(&block, &cert, &consensus);
                 }
@@ -237,7 +237,7 @@ pub async fn run_validator(
         let leader = consensus.leader_for_round(round, &runtime.validators);
         if leader.as_deref() == Some(validator_id.as_str()) {
             let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| e.to_string())?.as_secs();
-            if runtime.proposal(height)?.is_none() {
+            if runtime.proposal(height, round)?.is_none() {
                 let block = runtime.build_block(&chain_id, validator_id.clone(), round, timestamp, 5000, &signing_key)?;
                 runtime.store_proposal(&block)?;
                 let vote = consensus.sign_vote(&validator_id, &chain_id, block.index, block.round, &block.hash, &signing_key);
@@ -246,7 +246,7 @@ pub async fn run_validator(
                 broadcast(&peers, &node_id, &chain_id, Message::Vote(vote.clone())).await;
             }
         }
-        let block = runtime.proposal(height)?;
+        let block = runtime.proposal(height, round)?;
         if let Some(block) = block {
             let votes = runtime.votes_for(height, block.round, &block.hash)?;
             if let Ok(cert) = consensus.build_certificate(&block, &votes, &runtime.validators) {
