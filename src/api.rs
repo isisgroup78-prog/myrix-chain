@@ -32,9 +32,15 @@ async fn health_check()->(StatusCode,Json<serde_json::Value>){
 
 async fn chain_status(State(state):State<Arc<AppState>>)->(StatusCode,Json<ChainStatus>){
     let s=state.runtime.status();
+    state.metrics.block_height.set(s.height as f64);
+    state.metrics.validator_count.set(s.validator_count as f64);
     (StatusCode::OK,Json(ChainStatus{
-        network_name:state.config.network_name.clone(), chain_id:state.config.chain_id.clone(),
-        latest_height:s.height, peer_count:0, validators:0, block_time_ms:1200,
+        network_name:state.config.network_name.clone(),
+        chain_id:state.config.chain_id.clone(),
+        latest_height:s.height,
+        peer_count:0,
+        validators:s.validator_count,
+        block_time_ms:1200,
         version:env!("CARGO_PKG_VERSION").to_string()
     }))
 }
@@ -79,9 +85,8 @@ async fn account_by_address(Path(address):Path<String>,State(state):State<Arc<Ap
     }
 }
 
-async fn validators_list()->(StatusCode,Json<serde_json::Value>){
-    let raw=include_str!("../genesis/validators.json");
-    match serde_json::from_str::<serde_json::Value>(raw) {
+async fn validators_list(State(state):State<Arc<AppState>>)->(StatusCode,Json<serde_json::Value>){
+    match serde_json::to_value(&*state.runtime.validators) {
         Ok(v)=>(StatusCode::OK,Json(v)),
         Err(e)=>(StatusCode::INTERNAL_SERVER_ERROR,Json(serde_json::json!({"error":e.to_string()})))
     }
