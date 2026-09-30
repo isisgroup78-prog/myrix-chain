@@ -15,3 +15,5 @@ pub use api::create_router;
 pub use metrics::MetricsCollector;
 
 pub mod runtime;
+
+pub mod p2p;
