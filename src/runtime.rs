@@ -23,6 +23,7 @@ pub struct ChainRuntime {
     pub ledger: Arc<RwLock<Ledger>>,
     pub store: Arc<RocksDbStore>,
     pub validators: Arc<ValidatorSet>,
+    pub chain_id: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -58,7 +59,10 @@ impl ChainRuntime {
             }
         };
         let validators = Arc::new(ValidatorSet::from_genesis()?);
-        Ok(Self { ledger: Arc::new(RwLock::new(ledger)), store, validators })
+        let genesis: serde_json::Value = serde_json::from_str(include_str!("../genesis/genesis.json"))
+            .map_err(|e| format!("invalid genesis: {e}"))?;
+        let chain_id = genesis.get("chain_id").and_then(|v| v.as_str()).ok_or("genesis chain_id missing")?.to_string();
+        Ok(Self { ledger: Arc::new(RwLock::new(ledger)), store, validators, chain_id })
     }
 
     pub fn status(&self) -> RuntimeStatus {
@@ -162,7 +166,7 @@ impl ChainRuntime {
 
     pub fn validate_block(&self, block: &Block, consensus: &Consensus) -> Result<(), String> {
         let ledger = self.ledger.read().map_err(|_| "ledger lock poisoned")?;
-        consensus.validate_block(block, &self.validators, ledger.height + 1, &ledger.last_hash, &block.chain_id)
+        consensus.validate_block(block, &self.validators, ledger.height + 1, &ledger.last_hash, &self.chain_id)
     }
 
     pub fn commit_block(&self, block: &Block, cert: &CommitCertificate, consensus: &Consensus) -> Result<(), String> {
