@@ -29,8 +29,8 @@ jobs:
           DEPLOY_HOST: ${secrets.DEPLOY_HOST}
           DEPLOY_USER: ${secrets.DEPLOY_USER}
         run: |
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" 'mkdir -p ~/myrix'
-          scp docker-compose.deploy.yml .env.deploy.example scripts/deploy.sh "$DEPLOY_USER@$DEPLOY_HOST:~/myrix/"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" 'mkdir -p ~/myrix/monitoring'
+          scp docker-compose.deploy.yml .env.deploy.example scripts/deploy.sh "$DEPLOY_USER@$DEPLOY_HOST:~/myrix/"\n          scp monitoring/prometheus.yml monitoring/grafana-dashboard.json "$DEPLOY_USER@$DEPLOY_HOST:~/myrix/monitoring/"
       - name: Deploy
         env:
           DEPLOY_HOST: ${secrets.DEPLOY_HOST}
