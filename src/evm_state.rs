@@ -1,5 +1,5 @@
 use crate::storage::{RocksDbStore, Store};
-use revm::primitives::{Address, B256, U256};
+use revm::primitives::{keccak256, Address, B256, U256};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
@@ -40,8 +40,8 @@ impl EvmStateStore {
     }
 
     pub fn put_code(&self, code_hash: B256, code: &[u8]) -> Result<(), String> {
-        let calculated = Sha256::digest(code);
-        if calculated.as_slice() != code_hash.as_slice() {
+        let calculated = keccak256(code);
+        if calculated != code_hash {
             return Err("EVM code hash mismatch".to_string());
         }
         self.store.put(&code_key(code_hash), code)
