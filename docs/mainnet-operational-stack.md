@@ -86,3 +86,43 @@ Still required before an irreversible public mainnet launch:
 8. Test invalid signatures, conflicting votes and invalid proposals.
 9. Back up validator configuration and establish key custody.
 10. Only then perform the genesis launch.
+
+
+## 7. Smart-contract layer
+
+A Foundry/Solidity workspace now exists under `contracts/` with OpenZeppelin-based example contracts and automated Solidity tests.
+
+The chain is **not yet EVM-mainnet ready**. Before contracts can execute on MYRIX itself, the node needs:
+
+- deterministic EVM transaction types and signing/replay protection
+- persistent EVM account, contract-code and storage state
+- REVM execution integrated into block application
+- contract creation and message-call semantics
+- deterministic gas schedule and block gas limits
+- transaction receipts, logs and bloom/indexing strategy
+- EVM-compatible JSON-RPC methods such as `eth_chainId`, `eth_getBalance`, `eth_call`, `eth_sendRawTransaction`, `eth_getTransactionReceipt`
+- EVM address/account compatibility with the existing MYRIX account model
+- state-root commitment and deterministic state transition tests
+- Solidity integration tests against a MYRIX devnet
+- explorer support for contract addresses, events and internal calls
+
+REVM is the planned Rust execution backend. Its current documentation exposes the EVM database interface and execution builder APIs, which can be integrated once the MYRIX state model is adapted to EVM account/code/storage semantics. citeturn2search1turn2search2
+
+## 8. Mainnet gates
+
+The following are launch gates, not optional polish:
+
+1. CI, security audit and Solidity tests green.
+2. Three-or-more independent validator environments running the same genesis.
+3. Real validator key ceremony with independently verified public keys.
+4. Authenticated/encrypted P2P transport and peer identity.
+5. Byzantine/fault-injection tests covering conflicting proposals, equivocation, delayed messages and validator restarts.
+6. Snapshot/restore and disaster-recovery drill.
+7. Deterministic state-root/replay tests.
+8. Smart-contract execution audit before enabling value-bearing contracts.
+9. RPC rate limits, authentication for privileged endpoints, and abuse protection.
+10. Public testnet soak period with monitoring, alerting and incident runbooks.
+11. Independent review of consensus, cryptography, storage, P2P and contract execution.
+12. Only after those gates: freeze genesis, publish binaries/checksums, launch validators and enable public RPC.
+
+OpenZeppelin's mainnet guidance emphasizes testing, independent security review, source verification and secure key management; audits reduce risk but do not guarantee absence of vulnerabilities. citeturn0search1turn0search2
