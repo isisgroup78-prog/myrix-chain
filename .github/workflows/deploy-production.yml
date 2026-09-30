@@ -1,0 +1,40 @@
+name: Deploy MYRIX production
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "GHCR image tag, e.g. sha-abc1234"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{secrets.DEPLOY_SSH_KEY}}
+          DEPLOY_HOST: ${{secrets.DEPLOY_HOST}}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+      - name: Upload deployment files
+        env:
+          DEPLOY_HOST: ${{secrets.DEPLOY_HOST}}
+          DEPLOY_USER: ${{secrets.DEPLOY_USER}}
+        run: |
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" 'mkdir -p ~/myrix/monitoring'
+          scp docker-compose.deploy.yml .env.deploy.example scripts/deploy.sh "$DEPLOY_USER@$DEPLOY_HOST:~/myrix/"
+          scp monitoring/prometheus.yml monitoring/grafana-dashboard.json "$DEPLOY_USER@$DEPLOY_HOST:~/myrix/monitoring/"
+      - name: Deploy
+        env:
+          DEPLOY_HOST: ${{secrets.DEPLOY_HOST}}
+          DEPLOY_USER: ${{secrets.DEPLOY_USER}}
+          IMAGE_TAG: ${{inputs.image_tag}}
+        run: |
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "cd ~/myrix && chmod +x scripts/deploy.sh && ./scripts/deploy.sh ghcr.io/${{github.repository}}:$IMAGE_TAG"

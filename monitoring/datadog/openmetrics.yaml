@@ -1,0 +1,10 @@
+init_config:
+
+instances:
+  - openmetrics_endpoint: http://myrix-api:3000/metrics
+    namespace: myrix
+    metrics:
+      - "*"
+    send_histograms_buckets: true
+    send_distribution_buckets: true
+    send_monotonic_counter: true

@@ -1,20 +1,9 @@
 version: "3.9"
 services:
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: myrix
-      POSTGRES_PASSWORD: myrix_secure_password
-      POSTGRES_DB: myrix_chain
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
   prometheus:
     image: prom/prometheus:latest
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -25,9 +14,9 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3001:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in the deployment environment}
       GF_SECURITY_ADMIN_USER: admin
     volumes:
       - grafana_data:/var/lib/grafana
@@ -44,11 +33,67 @@ services:
       NETWORK_NAME: "MYRIX Chain"
       CHAIN_ID: "myrix-mainnet-1"
       API_ADDR: "0.0.0.0:3000"
+      DB_PATH: "/var/lib/myrix"
+    volumes:
+      - myrix_api_data:/var/lib/myrix
     depends_on:
-      - postgres
       - prometheus
 
+  validator-01:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    command: ["validator", "--id", "validator-01", "--listen-addr", "0.0.0.0:9000"]
+    environment:
+      RUST_LOG: info
+      CHAIN_ID: "myrix-mainnet-1"
+      NODE_ID: "validator-01"
+      DB_PATH: "/var/lib/myrix"
+      VALIDATOR_PRIVATE_KEY: ${VALIDATOR_01_PRIVATE_KEY:?Set VALIDATOR_01_PRIVATE_KEY}
+      P2P_PEERS: "validator-02:9001,validator-03:9002"
+    expose:
+      - "9000"
+    volumes:
+      - validator01_data:/var/lib/myrix
+
+  validator-02:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    command: ["validator", "--id", "validator-02", "--listen-addr", "0.0.0.0:9001"]
+    environment:
+      RUST_LOG: info
+      CHAIN_ID: "myrix-mainnet-1"
+      NODE_ID: "validator-02"
+      DB_PATH: "/var/lib/myrix"
+      VALIDATOR_PRIVATE_KEY: ${VALIDATOR_02_PRIVATE_KEY:?Set VALIDATOR_02_PRIVATE_KEY}
+      P2P_PEERS: "validator-01:9000,validator-03:9002"
+    expose:
+      - "9001"
+    volumes:
+      - validator02_data:/var/lib/myrix
+
+  validator-03:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    command: ["validator", "--id", "validator-03", "--listen-addr", "0.0.0.0:9002"]
+    environment:
+      RUST_LOG: info
+      CHAIN_ID: "myrix-mainnet-1"
+      NODE_ID: "validator-03"
+      DB_PATH: "/var/lib/myrix"
+      VALIDATOR_PRIVATE_KEY: ${VALIDATOR_03_PRIVATE_KEY:?Set VALIDATOR_03_PRIVATE_KEY}
+      P2P_PEERS: "validator-01:9000,validator-02:9001"
+    expose:
+      - "9002"
+    volumes:
+      - validator03_data:/var/lib/myrix
+
 volumes:
-  postgres_data:
   prometheus_data:
   grafana_data:
+  myrix_api_data:
+  validator01_data:
+  validator02_data:
+  validator03_data:

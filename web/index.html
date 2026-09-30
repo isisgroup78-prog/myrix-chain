@@ -1,69 +1,45 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MYRIX Chain Explorer</title>
-    <link rel="stylesheet" href="/src/styles.css" />
-  </head>
-  <body>
-    <div class="app-shell">
-      <header class="topbar">
-        <div class="brand">MYRIX</div>
-        <nav class="nav-links">
-          <a href="#">Blocks</a>
-          <a href="#">Transactions</a>
-          <a href="#">Validators</a>
-        </nav>
-      </header>
-
-      <main class="main-content">
-        <section class="hero">
-          <div class="hero-text">
-            <h1>MYRIX Chain</h1>
-            <p class="subtitle">Mainnet explorer and operational dashboard</p>
-          </div>
-        </section>
-
-        <section class="stats-section">
-          <div class="stat-card">
-            <label>Latest Height</label>
-            <span class="stat-value" id="block-height">--</span>
-          </div>
-          <div class="stat-card">
-            <label>Validators</label>
-            <span class="stat-value" id="validator-count">--</span>
-          </div>
-          <div class="stat-card">
-            <label>Peers</label>
-            <span class="stat-value" id="peer-count">--</span>
-          </div>
-          <div class="stat-card">
-            <label>Block Time</label>
-            <span class="stat-value" id="block-time">--</span>
-          </div>
-        </section>
-
-        <section class="panel">
-          <h2>Latest block</h2>
-          <div class="block-info">
-            <div class="info-row"><label>Height</label><span id="latest-height">--</span></div>
-            <div class="info-row"><label>Hash</label><span id="latest-hash" class="monospace">--</span></div>
-            <div class="info-row"><label>Proposer</label><span id="latest-proposer">--</span></div>
-            <div class="info-row"><label>Transactions</label><span id="latest-tx-count">--</span></div>
-            <div class="info-row"><label>Gas Used</label><span id="latest-gas-used">--</span></div>
-          </div>
-        </section>
-
-        <section class="panel">
-          <h2>Top validators</h2>
-          <div class="validator-list" id="validator-list">
-            <p>Loading...</p>
-          </div>
-        </section>
-      </main>
-    </div>
-
-    <script type="module" src="/src/main.js"></script>
-  </body>
-</html>
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#070b14">
+  <title>MYRIX Chain Explorer</title>
+  <link rel="stylesheet" href="/src/styles.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" href="/">MYRIX<span>CHAIN</span></a>
+    <nav><a href="#overview">Overview</a><a href="#block">Latest block</a><a href="#validators">Validators</a></nav>
+    <div class="network-pill"><i></i><span id="network-status">Connecting</span></div>
+  </header>
+  <main>
+    <section class="hero" id="overview">
+      <div><p class="eyebrow">PUBLIC BLOCKCHAIN EXPLORER</p><h1>MYRIX Chain</h1><p class="lead">A live view of network health, finalized blocks and validator activity.</p></div>
+      <div class="hero-card"><span>Chain ID</span><strong id="chain-id">--</strong><small id="last-refresh">Waiting for API</small></div>
+    </section>
+    <section class="stats" aria-label="Network statistics">
+      <article><span>Block height</span><strong id="block-height">--</strong><small>Latest finalized block</small></article>
+      <article><span>Validators</span><strong id="validator-count">--</strong><small>Active validators</small></article>
+      <article><span>Peers</span><strong id="peer-count">--</strong><small>Connected peers</small></article>
+      <article><span>Block time</span><strong id="block-time">--</strong><small>Configured target</small></article>
+    </section>
+    <section class="grid" id="block">
+      <article class="panel featured"><div class="panel-head"><div><p class="eyebrow">LATEST FINALIZED</p><h2>Block <span id="latest-height">--</span></h2></div><span class="live-dot">LIVE</span></div>
+        <div class="block-grid">
+          <div><label>Hash</label><code id="latest-hash">--</code></div><div><label>Proposer</label><strong id="latest-proposer">--</strong></div>
+          <div><label>Transactions</label><strong id="latest-tx-count">--</strong></div><div><label>Gas used</label><strong id="latest-gas-used">--</strong></div>
+        </div>
+      </article>
+      <article class="panel search-panel"><p class="eyebrow">LOOKUP</p><h2>Explore the chain</h2><p>Enter a block height, transaction hash or account address.</p>
+        <form id="lookup-form"><input id="lookup-input" placeholder="Block height / tx hash / address" autocomplete="off"><button>Search</button></form><pre id="lookup-result">No lookup yet.</pre>
+      </article>
+    </section>
+    <section class="panel" id="validators"><div class="panel-head"><div><p class="eyebrow">CONSENSUS</p><h2>Validator set</h2></div><button class="ghost" id="refresh">Refresh</button></div>
+      <div class="validator-table"><div class="table-row table-head"><span>Validator</span><span>Stake</span><span>Commission</span><span>Status</span></div><div id="validator-list"><div class="empty">Loading validator set…</div></div></div>
+    </section>
+  </main>
+  <footer><span>MYRIX Chain</span><span>API: <code id="api-url"></code></span></footer>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body></html>
