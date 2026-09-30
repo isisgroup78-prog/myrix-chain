@@ -32,8 +32,7 @@ async fn health_check()->(StatusCode,Json<serde_json::Value>){
 
 async fn chain_status(State(state):State<Arc<AppState>>)->(StatusCode,Json<ChainStatus>){
     let s=state.runtime.status();
-    state.metrics.block_height.set(s.height as f64);
-    state.metrics.validator_count.set(s.validator_count as f64);
+    state.metrics.sync(s.height, s.tx_count, s.validator_count);
     (StatusCode::OK,Json(ChainStatus{
         network_name:state.config.network_name.clone(),
         chain_id:state.config.chain_id.clone(),
@@ -93,5 +92,7 @@ async fn validators_list(State(state):State<Arc<AppState>>)->(StatusCode,Json<se
 }
 
 async fn prometheus_metrics(State(state):State<Arc<AppState>>)->(StatusCode,String){
+    let s = state.runtime.status();
+    state.metrics.sync(s.height, s.tx_count, s.validator_count);
     match state.metrics.render(){Ok(v)=>(StatusCode::OK,v),Err(e)=>(StatusCode::INTERNAL_SERVER_ERROR,e)}
 }
