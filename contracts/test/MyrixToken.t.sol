@@ -13,7 +13,7 @@ contract MyrixTokenTest is Test {
         token = new MyrixToken(treasury);
     }
 
-    function testInitialSupply() public {
+    function testInitialSupply() public view {
         assertEq(token.totalSupply(), 1_000_000_000 ether);
         assertEq(token.balanceOf(treasury), 1_000_000_000 ether);
     }
@@ -28,7 +28,7 @@ contract MyrixTokenTest is Test {
         token.burn(40 ether);
 
         assertEq(token.balanceOf(alice), 60 ether);
-        assertEq(token.totalSupply(), 999_999_940 ether);
+        assertEq(token.totalSupply(), 999_999_960 ether);
     }
 
     function testZeroTreasuryRejected() public {
