@@ -1,7 +1,7 @@
 use clap::Parser;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use myrix_chain::{config::Config, p2p, runtime::ChainRuntime, validator::ValidatorSet};
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(name="MYRIX Validator")]
