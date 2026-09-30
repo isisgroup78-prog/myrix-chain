@@ -44,11 +44,15 @@ services:
       NETWORK_NAME: "MYRIX Chain"
       CHAIN_ID: "myrix-mainnet-1"
       API_ADDR: "0.0.0.0:3000"
+      DB_PATH: "/var/lib/myrix"
     depends_on:
       - postgres
       - prometheus
+    volumes:
+      - myrix_data:/var/lib/myrix
 
 volumes:
   postgres_data:
   prometheus_data:
   grafana_data:
+  myrix_data:
