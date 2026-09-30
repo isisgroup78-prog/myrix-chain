@@ -36,6 +36,6 @@ sha2 = "0.10"
 tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 uuid = { version = "1.10", features = ["v4"] }
 rayon = "1.10"
