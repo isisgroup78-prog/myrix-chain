@@ -1,51 +1,49 @@
 # MYRIX Chain
 
-MYRIX Chain is a modular blockchain foundation built in Rust. This release adds the mainnet operational layer, including:
-- network and peer registry
-- staking and validator basics
-- consensus primitives
-- storage abstraction
-- governance primitives
-- bridge / rollup / SDK foundations
-- public API and web explorer shell
+MYRIX Chain is a modular blockchain foundation designed for a future-ready production network. This release focuses on the operational layer needed for mainnet readiness: validator setup, network monitoring, deployment guidance, and launch preparation.
+
+## Included
+- Rust API backend for blockchain status and metadata
+- validator node bootstrap scaffold
+- node runtime scaffold
+- monitoring configuration
+- Docker production setup
+- production deployment and launch runbooks
 
 ## Build
 
 ```bash
-cargo build
+cargo build --release
 ```
 
-## Run API
+## Run the API
 
 ```bash
 cargo run --bin myrix_chain
 ```
 
-## Docker
+## Run validator node
 
 ```bash
-docker-compose up --build
+cargo run --bin validator -- --id validator-1 --stake 1000000
 ```
 
-## Project modules
+## Run full node
 
-- `core` - transactions, blocks, ledger
-- `wallet` - signing and key management
-- `staking` - validator and staking logic
-- `consensus` - epochs and leadership
-- `network` - peer discovery and p2p foundation
-- `storage` - persistent chain storage
-- `governance` - voting and proposals
-- `bridge` - route definitions for chains
-- `sdk` - client abstraction and RPC integration
-- `rollup` - optimistic rollup cost foundations
-- `vm` - gas billing and execution layer
+```bash
+cargo run --bin node -- --id node-1
+```
 
-## Roadmap
+## Docker production stack
 
-- validator multi-node network
-- stronger consensus validation
-- genesis bootstrap
-- wallet and explorer production UI
-- governance on-chain execution
-- bridge and runtime integration
+```bash
+docker-compose -f docker-compose.prod.yml up --build
+```
+
+## Project direction
+
+- validator-based network
+- production RPC layer
+- public explorer
+- monitoring and observability
+- mainnet deployment preparation

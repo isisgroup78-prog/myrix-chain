@@ -1,0 +1,12 @@
+FROM rust:1.80 as builder
+WORKDIR /app
+COPY . ./
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/target/release/myrix_chain /usr/local/bin/
+COPY --from=builder /app/target/release/validator /usr/local/bin/
+COPY --from=builder /app/target/release/node /usr/local/bin/
+EXPOSE 3000
+CMD ["myrix_chain"]

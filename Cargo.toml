@@ -1,15 +1,35 @@
 [package]
 name = "myrix_chain"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2021"
+
+[[bin]]
+name = "myrix_chain"
+path = "src/main.rs"
+
+[[bin]]
+name = "validator"
+path = "src/bin/validator.rs"
+
+[[bin]]
+name = "node"
+path = "src/bin/node.rs"
 
 [dependencies]
 anyhow = "1.0"
 axum = "0.7"
-libp2p = { version = "0.53", features = ["tcp", "gossipsub", "identify", "kad"] }
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.4", features = ["derive"] }
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+hex = "0.4"
+prometheus = "0.13"
+rand = "0.8"
+rocksdb = "0.21"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+sha2 = "0.10"
 tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1.10", features = ["v4"] }

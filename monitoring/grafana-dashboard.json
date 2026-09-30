@@ -1,0 +1,13 @@
+{
+  "dashboard": {
+    "title": "MYRIX Chain Mainnet",
+    "tags": ["myrix", "blockchain"],
+    "timezone": "UTC",
+    "panels": [
+      { "title": "Block Height", "type": "graph", "targets": [{"expr": "myrix_block_height"}] },
+      { "title": "Transaction Rate", "type": "graph", "targets": [{"expr": "rate(myrix_tx_total[5m])"}] },
+      { "title": "Peer Count", "type": "stat", "targets": [{"expr": "myrix_peer_count"}] },
+      { "title": "Active Validators", "type": "stat", "targets": [{"expr": "myrix_validator_count"}] }
+    ]
+  }
+}
