@@ -1,45 +1,88 @@
-# Mainnet operational stack for MYRIX Chain
+# MYRIX Chain operational stack
 
-This document defines the next operational layer required to move from a local prototype toward a deployable blockchain network.
+This document describes the implemented node stack on the hardening branch and the remaining production-hardening items.
 
-## 1. Core chain services
-- ledger state
-- transaction validation
-- block validation
-- genesis block configuration
-- validator set bootstrap
+## 1. Core chain services — implemented
+- persistent RocksDB ledger state
+- deterministic genesis allocation bootstrap
+- Ed25519 transaction signatures and sender/public-key binding
+- nonce and balance validation
+- atomic block application
+- persistent mempool, proposals, votes and commit certificates
+- REST API for health, status, blocks, transactions, accounts and validators
+- Prometheus metrics endpoint
 
-## 2. Consensus and validator network
-- PoS validator registry
-- leader election
-- epoch changes
-- slashing conditions
-- quorum finality
+## 2. Consensus and validator network — implemented baseline
+- PoS validator registry loaded from canonical genesis
+- deterministic stake-weighted leader selection
+- signed block proposals
+- signed votes bound to chain ID, height, round and block hash
+- one-vote-per-validator-per-round protection
+- stake-weighted 2/3 quorum
+- commit-certificate verification
+- validator process with proposal, voting, finalization and retry rounds
+- block catch-up from peers using certificate-verified bundles
 
-## 3. P2P and RPC
-- libp2p peer discovery
-- gossip message propagation
-- JSON-RPC access
-- WebSocket real-time data
-- admin dashboard integration
+The current implementation is a compact BFT baseline. It is not a formal proof of Byzantine safety/liveness under every network fault model.
 
-## 4. Explorer and UX
-- blocks page
-- tx detail page
-- account page
-- validators page
-- metrics dashboard
+## 3. P2P and RPC — implemented baseline
+- bounded framed TCP transport
+- chain/protocol handshake
+- transaction submission
+- proposal and vote propagation
+- certificate propagation
+- block-range synchronization
+- REST RPC surface
+
+Production hardening still recommended:
+- authenticated/encrypted transport such as Noise/libp2p or an equivalent secure channel
+- peer discovery and persistent peer scoring
+- connection/IP rate limiting
+- replay protection and message IDs
+- WebSocket subscriptions
+- JSON-RPC compatibility if required by clients
+
+## 4. Validator deployment
+Production compose now includes three validator services with separate persistent volumes.
+
+Each validator must receive a real Ed25519 private seed through:
+- `VALIDATOR_01_PRIVATE_KEY`
+- `VALIDATOR_02_PRIVATE_KEY`
+- `VALIDATOR_03_PRIVATE_KEY`
+
+The corresponding public keys must be registered in `genesis/genesis.json` and `genesis/validators.json` before launch.
+
+Generate a key with:
+`cargo run --bin keygen`
+
+Never commit validator private keys.
 
 ## 5. Security and operations
-- monitoring stack
-- alerting service
-- key management
-- crash recovery
-- uptime checks
+Implemented:
+- no hard-coded validator private key
+- required production Grafana password
+- bounded P2P frame size and peer concurrency
+- persistent state
+- fail-closed validator key/public-key matching
 
-## 6. Mainnet launch checklist
-- validator onboarding
-- initial staking pools
-- node deployment automation
-- chain config generation
-- public release checklist
+Still required before an irreversible public mainnet launch:
+- independent security audit
+- fault-injection and multi-node integration tests
+- key custody/HSM or equivalent operational key protection
+- snapshot/restore procedures
+- alerting and SLOs
+- upgrade/migration policy
+- chain halt/recovery runbook
+- genesis ceremony and independently verified validator keys
+
+## 6. Launch checklist
+1. Generate validator keys.
+2. Verify each public key against the validator private seed.
+3. Replace genesis placeholders with the real public keys.
+4. Verify genesis allocations and validator stakes.
+5. Build all binaries.
+6. Run the multi-validator integration test suite.
+7. Test restart and peer catch-up.
+8. Test invalid signatures, conflicting votes and invalid proposals.
+9. Back up validator configuration and establish key custody.
+10. Only then perform the genesis launch.
