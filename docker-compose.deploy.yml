@@ -1,4 +1,11 @@
 services:
+  myrix-web:
+    image: ${MYRIX_WEB_IMAGE:?Set MYRIX_WEB_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      - myrix-api
+    ports: ["80:80"]
+
   myrix-api:
     image: ${MYRIX_IMAGE:?Set MYRIX_IMAGE}
     command: ["myrix_chain"]
