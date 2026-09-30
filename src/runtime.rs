@@ -63,8 +63,7 @@ impl ChainRuntime {
 
     pub fn mempool(&self) -> Result<Vec<Transaction>, String> {
         let mut out = Vec::new();
-        let mut iterator = self.store.raw_iter_prefix(b"mempool/");
-        while let Some((_, value)) = iterator.next() {
+        for value in self.store.scan_prefix(b"mempool/") {
             out.push(serde_json::from_slice(&value).map_err(|e| e.to_string())?);
         }
         out.sort_by(|a: &Transaction, b: &Transaction| a.hash.cmp(&b.hash));
