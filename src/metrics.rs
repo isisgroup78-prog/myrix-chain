@@ -10,7 +10,9 @@ pub struct MetricsCollector {
     last_tx_count: AtomicU64,
 }
 
-impl Default for MetricsCollector { fn default() -> Self { Self::new() } }\n\nimpl MetricsCollector {
+impl Default for MetricsCollector { fn default() -> Self { Self::new() } }
+
+impl MetricsCollector {
     pub fn new() -> Self {
         let registry = Registry::new();
         let block_height = Gauge::new("myrix_block_height", "Current block height").unwrap();
