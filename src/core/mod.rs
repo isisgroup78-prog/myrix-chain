@@ -37,12 +37,11 @@ pub struct Transaction {
 
 impl Transaction {
     pub fn signing_bytes(&self) -> Vec<u8> {
-        format!("{}|{}|{}|{}|{}|{}", self.sender, self.receiver, self.amount, self.nonce, self.fee, self.public_key).into_bytes()
+        format!("MYRIX-TX-V1|{}|{}|{}|{}|{}|{}",
+            self.sender, self.receiver, self.amount, self.nonce, self.fee, self.public_key).into_bytes()
     }
 
-    pub fn compute_hash(&self) -> String {
-        sha256_hex(&self.signing_bytes())
-    }
+    pub fn compute_hash(&self) -> String { sha256_hex(&self.signing_bytes()) }
 
     pub fn verify_signature(&self) -> Result<(), String> {
         let pk = hex::decode(self.public_key.strip_prefix("ed25519:").unwrap_or(&self.public_key))
@@ -57,25 +56,17 @@ impl Transaction {
     }
 
     pub fn validate(&self, account: Option<&Account>) -> Result<(), String> {
-        if self.sender.is_empty() || self.receiver.is_empty() {
-            return Err("sender and receiver are required".to_string());
-        }
-        if self.amount == 0 {
-            return Err("amount must be > 0".to_string());
-        }
-        if self.compute_hash() != self.hash {
-            return Err("transaction hash mismatch".to_string());
-        }
+        if self.sender.is_empty() || self.receiver.is_empty() { return Err("sender and receiver are required".to_string()); }
+        if self.amount == 0 { return Err("amount must be > 0".to_string()); }
+        if self.compute_hash() != self.hash { return Err("transaction hash mismatch".to_string()); }
         self.verify_signature()?;
-        if address_from_public_key_hex(&self.public_key)? != self.sender { return Err("sender does not match public key".to_string()); }
+        if address_from_public_key_hex(&self.public_key)? != self.sender {
+            return Err("sender does not match public key".to_string());
+        }
         if let Some(account) = account {
-            if account.nonce != self.nonce {
-                return Err(format!("invalid nonce: expected {}", account.nonce));
-            }
+            if account.nonce != self.nonce { return Err(format!("invalid nonce: expected {}", account.nonce)); }
             let total = self.amount.checked_add(self.fee).ok_or("amount overflow")?;
-            if account.balance < total {
-                return Err("insufficient balance".to_string());
-            }
+            if account.balance < total { return Err("insufficient balance".to_string()); }
         }
         Ok(())
     }
@@ -84,33 +75,34 @@ impl Transaction {
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct Block {
     pub index: u64,
+    pub round: u64,
+    pub chain_id: String,
     pub prev_hash: String,
     pub transactions: Vec<Transaction>,
     pub timestamp: u64,
     pub proposer: String,
+    pub proposer_signature: String,
     pub hash: String,
     pub gas_used: u64,
 }
 
 impl Block {
-    pub fn compute_hash(&self) -> String {
-        let tx_hashes = self.transactions.iter().map(|t| t.hash.as_str()).collect::<Vec<_>>().join(",");
-        sha256_hex(format!("{}|{}|{}|{}|{}|{}", self.index, self.prev_hash, tx_hashes, self.timestamp, self.proposer, self.gas_used).as_bytes())
+    pub fn signing_bytes(&self) -> Vec<u8> {
+        format!("MYRIX-BLOCK-V1|{}|{}|{}|{}|{}|{}|{}",
+            self.chain_id, self.index, self.round, self.prev_hash,
+            self.transactions.iter().map(|t| t.hash.as_str()).collect::<Vec<_>>().join(","),
+            self.timestamp, self.proposer, self.gas_used).into_bytes()
     }
 
-    pub fn validate_header(&self, expected_height: u64, expected_prev_hash: &str) -> Result<(), String> {
-        if self.index != expected_height {
-            return Err("invalid block height".to_string());
-        }
-        if self.prev_hash != expected_prev_hash {
-            return Err("invalid previous hash".to_string());
-        }
-        if self.hash != self.compute_hash() {
-            return Err("block hash mismatch".to_string());
-        }
-        if self.proposer.is_empty() {
-            return Err("missing proposer".to_string());
-        }
+    pub fn compute_hash(&self) -> String { sha256_hex(&self.signing_bytes()) }
+
+    pub fn validate_header(&self, expected_height: u64, expected_prev_hash: &str, expected_chain_id: &str) -> Result<(), String> {
+        if self.index != expected_height { return Err("invalid block height".to_string()); }
+        if self.prev_hash != expected_prev_hash { return Err("invalid previous hash".to_string()); }
+        if self.chain_id != expected_chain_id { return Err("invalid chain id".to_string()); }
+        if self.hash != self.compute_hash() { return Err("block hash mismatch".to_string()); }
+        if self.proposer.is_empty() { return Err("missing proposer".to_string()); }
+        if self.proposer_signature.is_empty() { return Err("missing proposer signature".to_string()); }
         Ok(())
     }
 }
@@ -142,7 +134,7 @@ impl Ledger {
     }
 
     pub fn apply_block(&mut self, block: &Block) -> Result<(), String> {
-        block.validate_header(self.height + 1, &self.last_hash)?;
+        block.validate_header(self.height + 1, &self.last_hash, &block.chain_id)?;
         let mut next = self.clone();
         for tx in &block.transactions { next.apply_transaction(tx)?; }
         next.height = block.index;
