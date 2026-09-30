@@ -47,3 +47,7 @@ docker-compose -f docker-compose.prod.yml up --build
 - public explorer
 - monitoring and observability
 - mainnet deployment preparation
+
+## Engineering status
+
+The current hardening branch is an engineering baseline, not a claim of mainnet readiness or a benchmark against another network. Performance work includes parallel signature verification, deterministic weighted leader selection, persistent state, signed quorum certificates, P2P transport, RPC, monitoring, deployment automation, and a production explorer. Mainnet launch still requires passing CI, multi-node fault testing, a real genesis key ceremony, independent security review, and distributed validator infrastructure.
