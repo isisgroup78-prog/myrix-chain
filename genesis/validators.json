@@ -1,0 +1,23 @@
+[
+  {
+    "id": "validator-01",
+    "public_key": "ed25519:validator01_public_key",
+    "stake": 1000000,
+    "network": "0.0.0.0:9000",
+    "status": "active"
+  },
+  {
+    "id": "validator-02",
+    "public_key": "ed25519:validator02_public_key",
+    "stake": 1000000,
+    "network": "0.0.0.0:9001",
+    "status": "active"
+  },
+  {
+    "id": "validator-03",
+    "public_key": "ed25519:validator03_public_key",
+    "stake": 1000000,
+    "network": "0.0.0.0:9002",
+    "status": "active"
+  }
+]
