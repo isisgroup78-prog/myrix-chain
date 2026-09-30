@@ -1,55 +1,27 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-async function loadStatus() {
-  try {
-    const res = await fetch(`${API_URL}/status`);
-    const data = await res.json();
-    document.getElementById('block-height').textContent = data.latest_height.toLocaleString();
-    document.getElementById('validator-count').textContent = data.validators;
-    document.getElementById('peer-count').textContent = data.peer_count;
-    document.getElementById('block-time').textContent = `${data.block_time_ms}ms`;
-  } catch (error) {
-    console.error('Failed to fetch status', error);
-  }
+document.getElementById('api-url').textContent = API_URL;
+const $ = id => document.getElementById(id);
+const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path, options) { const res=await fetch(API_URL+path, options); const data=await res.json(); if(!res.ok) throw new Error(data.error || 'Request failed'); return data; }
+function setOnline(online){ $('network-status').textContent=online?'Network online':'API offline'; document.querySelector('.network-pill').classList.toggle('offline',!online); }
+async function loadStatus(){
+  try { const d=await api('/status'); $('block-height').textContent=d.latest_height.toLocaleString(); $('validator-count').textContent=d.validators; $('peer-count').textContent=d.peer_count; $('block-time').textContent=d.block_time_ms+'ms'; $('chain-id').textContent=d.chain_id; $('last-refresh').textContent='Updated '+new Date().toLocaleTimeString(); setOnline(true); }
+  catch(e){ setOnline(false); $('last-refresh').textContent=e.message; }
 }
-
-async function loadLatestBlock() {
-  try {
-    const res = await fetch(`${API_URL}/block/latest`);
-    const block = await res.json();
-    document.getElementById('latest-height').textContent = block.height.toLocaleString();
-    document.getElementById('latest-hash').textContent = block.hash.slice(0, 24) + '...';
-    document.getElementById('latest-proposer').textContent = block.proposer;
-    document.getElementById('latest-tx-count').textContent = block.tx_count;
-    document.getElementById('latest-gas-used').textContent = `${(block.gas_used / 1_000_000).toFixed(2)}M`;
-  } catch (error) {
-    console.error('Failed to fetch latest block', error);
-  }
+async function loadBlock(){
+  try { const b=await api('/block/latest'); $('latest-height').textContent=b.height ?? b.index ?? '--'; $('latest-hash').textContent=b.hash || '--'; $('latest-proposer').textContent=b.proposer || '--'; $('latest-tx-count').textContent=b.tx_count ?? b.transactions?.length ?? 0; $('latest-gas-used').textContent=(b.gas_used ?? 0).toLocaleString(); }
+  catch(e){ $('latest-hash').textContent=e.message; }
 }
-
-async function loadValidators() {
-  try {
-    const res = await fetch(`${API_URL}/validators`);
-    const validators = await res.json();
-    const html = validators.map((v, i) => `
-      <div class="validator-item">
-        <span class="rank">#${i + 1}</span>
-        <span class="validator-id">${v.id}</span>
-        <span class="stake">${(v.stake / 1_000_000).toFixed(0)}M</span>
-        <span class="commission">${v.commission / 100}%</span>
-        <span class="status ${v.active ? 'active' : 'inactive'}">${v.active ? 'Active' : 'Inactive'}</span>
-      </div>
-    `).join('');
-    document.getElementById('validator-list').innerHTML = html;
-  } catch (error) {
-    console.error('Failed to fetch validators', error);
-  }
+async function loadValidators(){
+  try { const d=await api('/validators'); const list=Array.isArray(d)?d:(d.validators||[]); $('validator-list').innerHTML=list.map((v,i)=>'<div class="table-row"><span><b>#'+(i+1)+' '+esc(v.id)+'</b><small>'+esc(v.public_key||'').slice(0,22)+'…</small></span><span>'+Number(v.stake||0).toLocaleString()+'</span><span>'+((v.commission||0)/100)+'%</span><span><em class="'+(v.active?'ok':'bad')+'">'+(v.active?'Active':'Inactive')+'</em></span></div>').join('') || '<div class="empty">No validators returned.</div>'; }
+  catch(e){ $('validator-list').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; }
 }
-
-loadStatus();
-loadLatestBlock();
-loadValidators();
-setInterval(() => {
-  loadStatus();
-  loadLatestBlock();
-}, 12000);
+async function lookup(value){
+  const q=value.trim(); if(!q) return;
+  const out=$('lookup-result'); out.textContent='Searching…';
+  try { let data; if(/^\d+$/.test(q)) data=await api('/block/'+q); else if(q.startsWith('0x')) data=await api('/account/'+encodeURIComponent(q)); else data=await api('/tx/'+encodeURIComponent(q)); out.textContent=JSON.stringify(data,null,2); }
+  catch(e){ out.textContent=e.message; }
+}
+$('lookup-form').addEventListener('submit',e=>{e.preventDefault();lookup($('lookup-input').value);});
+$('refresh').addEventListener('click',()=>Promise.all([loadStatus(),loadBlock(),loadValidators()]));
+loadStatus(); loadBlock(); loadValidators(); setInterval(()=>{loadStatus();loadBlock();},10000);
