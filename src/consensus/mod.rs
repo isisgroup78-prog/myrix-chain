@@ -61,6 +61,11 @@ impl Consensus {
         if expected != block.proposer { return Err("block proposer is not the deterministic leader".to_string()); }
         let validator = validators.validators.get(&block.proposer).ok_or("unknown proposer")?;
         security::verify_ed25519(&validator.public_key, &block.signing_bytes(), &block.proposer_signature)?;
+        block.transactions.par_iter().try_for_each(|tx| -> Result<(), String> {
+            if tx.compute_hash() != tx.hash { return Err("transaction hash mismatch".to_string()); }
+            tx.verify_signature()?;
+            Ok(())
+        })?;
         let mut candidate = ledger.clone();
         for tx in &block.transactions { candidate.apply_transaction(tx)?; }
         Ok(())
