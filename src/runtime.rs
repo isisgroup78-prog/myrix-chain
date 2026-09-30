@@ -23,7 +23,25 @@ pub struct RuntimeStatus {
 impl ChainRuntime {
     pub fn open(path: &str) -> Result<Self, String> {
         let store = Arc::new(RocksDbStore::new(path)?);
-        let ledger = store.get_json::<Ledger>(LEDGER_KEY)?.unwrap_or_else(Ledger::new);
+        let ledger = match store.get_json::<Ledger>(LEDGER_KEY)? {
+            Some(ledger) => ledger,
+            None => {
+                let mut ledger = Ledger::new();
+                let genesis: serde_json::Value = serde_json::from_str(include_str!("../genesis/genesis.json"))
+                    .map_err(|e| format!("invalid genesis: {e}"))?;
+                if let Some(allocations) = genesis.get("allocations").and_then(|v| v.as_array()) {
+                    for allocation in allocations {
+                        let address = allocation.get("address").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+                        let balance = allocation.get("amount").and_then(|v| v.as_str()).and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
+                        if !address.is_empty() {
+                            ledger.accounts.insert(address.clone(), crate::core::Account { id: address, balance, nonce: 0 });
+                        }
+                    }
+                }
+                store.put_json(LEDGER_KEY, &ledger)?;
+                ledger
+            }
+        };
         Ok(Self { ledger: Arc::new(RwLock::new(ledger)), store })
     }
 
