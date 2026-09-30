@@ -4,6 +4,7 @@ use crate::{
     core::{Block, Ledger, Transaction},
     storage::RocksDbStore,
     validator::ValidatorSet,
+    evm_state::EvmStateStore,
 };
 use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,7 @@ pub struct ChainRuntime {
     pub ledger: Arc<RwLock<Ledger>>,
     pub store: Arc<RocksDbStore>,
     pub validators: Arc<ValidatorSet>,
+    pub evm: EvmStateStore,
     pub chain_id: String,
     mempool_lock: Arc<Mutex<()>>,
 }
@@ -71,7 +73,7 @@ impl ChainRuntime {
         let genesis: serde_json::Value = serde_json::from_str(include_str!("../genesis/genesis.json"))
             .map_err(|e| format!("invalid genesis: {e}"))?;
         let chain_id = genesis.get("chain_id").and_then(|v| v.as_str()).ok_or("genesis chain_id missing")?.to_string();
-        Ok(Self { ledger: Arc::new(RwLock::new(ledger)), store, validators, chain_id, mempool_lock: Arc::new(Mutex::new(())) })
+        Ok(Self { ledger: Arc::new(RwLock::new(ledger)), evm: EvmStateStore::new(store.clone()), store, validators, chain_id, mempool_lock: Arc::new(Mutex::new(())) })
     }
 
     pub fn status(&self) -> RuntimeStatus {
