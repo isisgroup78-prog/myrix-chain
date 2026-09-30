@@ -61,7 +61,7 @@ impl EvmExecutor {
     pub fn simulate(&self, call: &EvmCall) -> Result<EvmExecution, String> {
         let (from, to, value, data) = self.validate_call(call)?;
 
-        let mut evm = Evm::default();
+        let mut evm = Evm::builder().with_spec_id(revm::primitives::hardfork::SpecId::PRAGUE).build();
         let tx = evm.tx_mut();
         tx.caller = from;
         tx.transact_to = match to {
