@@ -88,7 +88,7 @@ pub struct Block {
 
 impl Block {
     pub fn signing_bytes(&self) -> Vec<u8> {
-        format!("MYRIX-BLOCK-V1|{}|{}|{}|{}|{}|{}|{}",
+        format!("MYRIX-BLOCK-V1|{}|{}|{}|{}|{}|{}|{}|{}",
             self.chain_id, self.index, self.round, self.prev_hash,
             self.transactions.iter().map(|t| t.hash.as_str()).collect::<Vec<_>>().join(","),
             self.timestamp, self.proposer, self.gas_used).into_bytes()
