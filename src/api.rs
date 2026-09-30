@@ -1,4 +1,4 @@
-use axum::{extract::{Path, State}, http::StatusCode, response::Json, routing::get, Router};
+use axum::{extract::{Path, State}, http::StatusCode, response::Json, routing::{get, post}, Json as AxumJson, Router};
 use std::sync::Arc;
 use crate::{config::Config, metrics::MetricsCollector, runtime::ChainRuntime};
 
@@ -18,6 +18,7 @@ pub fn create_router() -> anyhow::Result<Router> {
         .route("/status",get(chain_status))
         .route("/block/latest",get(latest_block))
         .route("/block/:height",get(block_by_height))
+        .route("/tx",post(submit_transaction))
         .route("/tx/:hash",get(tx_by_hash))
         .route("/account/:address",get(account_by_address))
         .route("/validators",get(validators_list))
@@ -52,6 +53,13 @@ async fn block_by_height(Path(height):Path<u64>,State(state):State<Arc<AppState>
         Ok(Some(block)) => (StatusCode::OK,Json(serde_json::to_value(block).unwrap())),
         Ok(None) => (StatusCode::NOT_FOUND,Json(serde_json::json!({"error":"block not found","height":height}))),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR,Json(serde_json::json!({"error":e})))
+    }
+}
+
+async fn submit_transaction(State(state):State<Arc<AppState>>, AxumJson(tx):AxumJson<crate::core::Transaction>)->(StatusCode,Json<serde_json::Value>){
+    match state.runtime.submit_transaction(&tx) {
+        Ok(hash)=>(StatusCode::ACCEPTED,Json(serde_json::json!({"status":"accepted","hash":hash}))),
+        Err(e)=>(StatusCode::BAD_REQUEST,Json(serde_json::json!({"error":e})))
     }
 }
 
