@@ -30,7 +30,7 @@ pub struct ValidatorSet {
 struct GenesisValidator {
     id: String,
     public_key: String,
-    stake: u64,
+    stake: String,
     #[serde(default)]
     commission_bps: u64,
 }
@@ -43,7 +43,8 @@ impl ValidatorSet {
         let mut set = Self::new();
         for item in items {
             let v: GenesisValidator = serde_json::from_value(item.clone()).map_err(|e| format!("invalid genesis validator: {e}"))?;
-            let mut info = ValidatorInfo::new(v.id, v.public_key, v.stake);
+            let stake = v.stake.parse::<u64>().map_err(|_| format!("invalid stake for validator {}", v.id))?;
+            let mut info = ValidatorInfo::new(v.id, v.public_key, stake);
             info.commission = v.commission_bps;
             set.add_validator(info)?;
         }
@@ -88,16 +89,19 @@ impl ValidatorSet {
     pub fn active_stake(&self) -> u64 {
         self.validators.values()
             .filter(|v| v.active && !v.jailed && !v.slashed)
-            .map(|v| v.stake)
-            .sum()
+            .try_fold(0u64, |total, v| total.checked_add(v.stake))
+            .unwrap_or(u64::MAX)
     }
 
     pub fn quorum(&self) -> u64 {
-        let active = self.active_stake();
-        (active.saturating_mul(2) / 3).saturating_add(1)
+        let active = self.active_stake() as u128;
+        ((active * 2) / 3 + 1).min(u64::MAX as u128) as u64
     }
 
     pub fn voting_power(&self, ids: &[String]) -> u64 {
-        ids.iter().filter_map(|id| self.validators.get(id)).filter(|v| v.active && !v.jailed && !v.slashed).map(|v| v.stake).sum()
+        ids.iter()
+            .filter_map(|id| self.validators.get(id))
+            .filter(|v| v.active && !v.jailed && !v.slashed)
+            .fold(0u64, |total, v| total.saturating_add(v.stake))
     }
 }
