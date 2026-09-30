@@ -1,0 +1,84 @@
+services:
+  myrix-api:
+    image: ${MYRIX_IMAGE:?Set MYRIX_IMAGE}
+    command: ["myrix_chain"]
+    restart: unless-stopped
+    ports: ["3000:3000"]
+    environment:
+      RUST_LOG: info
+      NETWORK_NAME: "MYRIX Chain"
+      CHAIN_ID: "myrix-mainnet-1"
+      API_ADDR: "0.0.0.0:3000"
+      DB_PATH: "/var/lib/myrix"
+    volumes: [myrix_api_data:/var/lib/myrix]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  validator-01:
+    image: ${MYRIX_IMAGE:?Set MYRIX_IMAGE}
+    command: ["validator","--id","validator-01","--listen-addr","0.0.0.0:9000"]
+    restart: unless-stopped
+    environment:
+      RUST_LOG: info
+      CHAIN_ID: "myrix-mainnet-1"
+      NODE_ID: "validator-01"
+      DB_PATH: "/var/lib/myrix"
+      VALIDATOR_PRIVATE_KEY: ${VALIDATOR_01_PRIVATE_KEY:?Set VALIDATOR_01_PRIVATE_KEY}
+      P2P_PEERS: "validator-02:9001,validator-03:9002"
+    volumes: [validator01_data:/var/lib/myrix]
+
+  validator-02:
+    image: ${MYRIX_IMAGE:?Set MYRIX_IMAGE}
+    command: ["validator","--id","validator-02","--listen-addr","0.0.0.0:9001"]
+    restart: unless-stopped
+    environment:
+      RUST_LOG: info
+      CHAIN_ID: "myrix-mainnet-1"
+      NODE_ID: "validator-02"
+      DB_PATH: "/var/lib/myrix"
+      VALIDATOR_PRIVATE_KEY: ${VALIDATOR_02_PRIVATE_KEY:?Set VALIDATOR_02_PRIVATE_KEY}
+      P2P_PEERS: "validator-01:9000,validator-03:9002"
+    volumes: [validator02_data:/var/lib/myrix]
+
+  validator-03:
+    image: ${MYRIX_IMAGE:?Set MYRIX_IMAGE}
+    command: ["validator","--id","validator-03","--listen-addr","0.0.0.0:9002"]
+    restart: unless-stopped
+    environment:
+      RUST_LOG: info
+      CHAIN_ID: "myrix-mainnet-1"
+      NODE_ID: "validator-03"
+      DB_PATH: "/var/lib/myrix"
+      VALIDATOR_PRIVATE_KEY: ${VALIDATOR_03_PRIVATE_KEY:?Set VALIDATOR_03_PRIVATE_KEY}
+      P2P_PEERS: "validator-01:9000,validator-02:9001"
+    volumes: [validator03_data:/var/lib/myrix]
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports: ["127.0.0.1:3001:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD}
+      GF_SECURITY_ADMIN_USER: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana-dashboard.json:/etc/grafana/provisioning/dashboards/myrix.json:ro
+
+volumes:
+  myrix_api_data:
+  validator01_data:
+  validator02_data:
+  validator03_data:
+  prometheus_data:
+  grafana_data:
