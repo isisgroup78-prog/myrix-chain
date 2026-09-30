@@ -23,11 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Foundry
-        shell: bash
-        run: |
-          curl -L https://getfoundry.sh/install | bash
-          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
-          foundryup
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
       - name: Install dependencies
         run: |
           forge install OpenZeppelin/openzeppelin-contracts --no-commit
