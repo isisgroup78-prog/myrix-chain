@@ -47,3 +47,44 @@ impl Consensus {
         validators.voting_power(voters) >= validators.quorum()
     }
 }
+
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Vote {
+    pub validator_id: String,
+    pub block_hash: String,
+    pub signature: String,
+    pub public_key: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CommitCertificate {
+    pub block_hash: String,
+    pub voters: Vec<String>,
+}
+
+impl Consensus {
+    pub fn verify_vote(&self, vote: &Vote, validators: &ValidatorSet) -> Result<(), String> {
+        let validator = validators.validators.get(&vote.validator_id)
+            .ok_or_else(|| "unknown validator".to_string())?;
+        if !validator.active || validator.jailed || validator.slashed {
+            return Err("validator is not eligible to vote".to_string());
+        }
+        crate::security::verify_ed25519(&validator.public_key, vote.block_hash.as_bytes(), &vote.signature)
+    }
+
+    pub fn build_certificate(&self, block_hash: &str, votes: &[Vote], validators: &ValidatorSet) -> Result<CommitCertificate, String> {
+        let mut voters = Vec::new();
+        for vote in votes {
+            if vote.block_hash == block_hash && self.verify_vote(vote, validators).is_ok() && !voters.contains(&vote.validator_id) {
+                voters.push(vote.validator_id.clone());
+            }
+        }
+        if !self.has_quorum(validators, &voters) {
+            return Err("quorum not reached".to_string());
+        }
+        Ok(CommitCertificate { block_hash: block_hash.to_string(), voters })
+    }
+}
