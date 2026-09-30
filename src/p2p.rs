@@ -10,9 +10,6 @@ use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::{TcpListener, TcpStream}, sy
 
 const MAX_FRAME: usize = 1024 * 1024;
 const PROTOCOL: u16 = 1;
-const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
-const MESSAGE_TIMEOUT: Duration = Duration::from_secs(30);
-const MAX_MESSAGES_PER_CONNECTION: u32 = 10_000;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
@@ -51,8 +48,7 @@ async fn write_message(stream: &mut TcpStream, message: &Message) -> Result<(), 
 }
 
 async fn send(address: &str, node_id: &str, chain_id: &str, message: Message) -> Result<(), String> {
-    let mut stream = tokio::time::timeout(HANDSHAKE_TIMEOUT, TcpStream::connect(address)).await
-        .map_err(|_| "peer connection timeout".to_string())?.map_err(|e| e.to_string())?;
+    let mut stream = TcpStream::connect(address).await.map_err(|e| e.to_string())?;
     write_message(&mut stream, &Message::Hello { node_id: node_id.to_string(), chain_id: chain_id.to_string(), protocol: PROTOCOL }).await?;
     match read_message(&mut stream).await? {
         Message::Pong => {}
@@ -76,22 +72,15 @@ async fn handle_connection(
     runtime: Arc<ChainRuntime>,
     validator: Option<ValidatorContext>,
 ) -> Result<(), String> {
-    let remote_id = match tokio::time::timeout(HANDSHAKE_TIMEOUT, read_message(&mut stream)).await
-        .map_err(|_| "handshake timeout".to_string())?? {
+    let remote_id = match read_message(&mut stream).await? {
         Message::Hello { node_id, chain_id, protocol } if chain_id == expected_chain && protocol == PROTOCOL => node_id,
         _ => return Err("invalid or incompatible handshake".to_string()),
     };
     write_message(&mut stream, &Message::Pong).await?;
     let consensus = Consensus::new();
 
-    let mut message_count = 0u32;
     loop {
-        message_count = message_count.saturating_add(1);
-        if message_count > MAX_MESSAGES_PER_CONNECTION { return Err("connection message limit exceeded".to_string()); }
-        let message = match tokio::time::timeout(MESSAGE_TIMEOUT, read_message(&mut stream)).await {
-            Ok(result) => match result { Ok(m) => m, Err(_) => break },
-            Err(_) => break,
-        };
+        let message = match read_message(&mut stream).await {
             Ok(m) => m,
             Err(_) => break,
         };
