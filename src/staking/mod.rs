@@ -9,14 +9,7 @@ pub struct Validator {
 }
 
 impl Validator {
-    pub fn new(id: String, stake: u64) -> Self {
-        Self {
-            id,
-            stake,
-            commission: 0,
-            active: true,
-        }
-    }
+    pub fn new(id: String, stake: u64) -> Self { Self { id, stake, commission: 50, active: true } }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -26,26 +19,26 @@ pub struct StakePool {
 }
 
 impl StakePool {
-    pub fn new() -> Self {
-        Self {
-            validators: HashMap::new(),
-            total_stake: 0,
-        }
-    }
+    pub fn new() -> Self { Self { validators: HashMap::new(), total_stake: 0 } }
 
-    pub fn add_validator(&mut self, validator: Validator) {
-        self.total_stake += validator.stake;
+    pub fn add_validator(&mut self, validator: Validator) -> Result<(), String> {
+        if validator.id.is_empty() || validator.stake == 0 { return Err("validator id and stake are required".to_string()); }
+        if self.validators.contains_key(&validator.id) { return Err("validator already exists".to_string()); }
+        self.total_stake = self.total_stake.checked_add(validator.stake).ok_or("total stake overflow")?;
         self.validators.insert(validator.id.clone(), validator);
+        Ok(())
     }
 
     pub fn leader_for_round(&self, round: u64) -> Option<String> {
-        if self.validators.is_empty() {
-            return None;
+        let mut entries: Vec<_> = self.validators.values().filter(|v| v.active).collect();
+        entries.sort_by(|a,b| a.id.cmp(&b.id));
+        if entries.is_empty() { return None; }
+        let total: u128 = entries.iter().map(|v| v.stake as u128).sum();
+        let mut target = (round as u128) % total;
+        for v in entries {
+            if target < v.stake as u128 { return Some(v.id.clone()); }
+            target -= v.stake as u128;
         }
-
-        let mut entries: Vec<_> = self.validators.values().collect();
-        entries.sort_by(|a, b| b.stake.cmp(&a.stake));
-        let idx = (round as usize) % entries.len();
-        Some(entries[idx].id.clone())
+        None
     }
 }
