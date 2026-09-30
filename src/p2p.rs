@@ -94,17 +94,18 @@ async fn handle_connection(
                 write_message(&mut stream, &response).await?;
             }
             Message::Proposal(block) => {
+                runtime.validate_block(&block, &consensus)?;
                 runtime.store_proposal(&block)?;
                 if let Some(ctx) = &validator {
                     if ctx.id != block.proposer {
-                        runtime.validate_block(&block, &consensus)?;
                         let vote = consensus.sign_vote(&ctx.id, &expected_chain, block.index, block.round, &block.hash, &ctx.key);
                         runtime.record_vote(&vote)?;
-                        write_message(&mut stream, &Message::Vote(vote.clone())).await?;
+                        write_message(&mut stream, &Message::Vote(vote)).await?;
                     }
                 }
             }
             Message::Vote(vote) => {
+                if vote.chain_id != expected_chain { return Err("vote chain id mismatch".to_string()); }
                 consensus.verify_vote(&vote, &runtime.validators)?;
                 runtime.record_vote(&vote)?;
                 let height = vote.height;
@@ -194,7 +195,6 @@ pub async fn run_validator(
     let server_runtime = runtime.clone();
     let server_chain = chain_id.clone();
     let server_id = node_id.clone();
-    let server_peers = peers.clone();
 
     tokio::spawn(async move {
         loop {
