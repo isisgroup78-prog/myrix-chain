@@ -16,8 +16,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Configure SSH
         env:
-          SSH_PRIVATE_KEY: ${secrets.DEPLOY_SSH_KEY}
-          DEPLOY_HOST: ${secrets.DEPLOY_HOST}
+          SSH_PRIVATE_KEY: ${{secrets.DEPLOY_SSH_KEY}}
+          DEPLOY_HOST: ${{secrets.DEPLOY_HOST}}
         run: |
           mkdir -p ~/.ssh
           printf '%s
@@ -26,15 +26,16 @@ jobs:
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
       - name: Upload deployment files
         env:
-          DEPLOY_HOST: ${secrets.DEPLOY_HOST}
-          DEPLOY_USER: ${secrets.DEPLOY_USER}
+          DEPLOY_HOST: ${{secrets.DEPLOY_HOST}}
+          DEPLOY_USER: ${{secrets.DEPLOY_USER}}
         run: |
           ssh "$DEPLOY_USER@$DEPLOY_HOST" 'mkdir -p ~/myrix/monitoring'
-          scp docker-compose.deploy.yml .env.deploy.example scripts/deploy.sh "$DEPLOY_USER@$DEPLOY_HOST:~/myrix/"\n          scp monitoring/prometheus.yml monitoring/grafana-dashboard.json "$DEPLOY_USER@$DEPLOY_HOST:~/myrix/monitoring/"
+          scp docker-compose.deploy.yml .env.deploy.example scripts/deploy.sh "$DEPLOY_USER@$DEPLOY_HOST:~/myrix/"
+          scp monitoring/prometheus.yml monitoring/grafana-dashboard.json "$DEPLOY_USER@$DEPLOY_HOST:~/myrix/monitoring/"
       - name: Deploy
         env:
-          DEPLOY_HOST: ${secrets.DEPLOY_HOST}
-          DEPLOY_USER: ${secrets.DEPLOY_USER}
-          IMAGE_TAG: ${inputs.image_tag}
+          DEPLOY_HOST: ${{secrets.DEPLOY_HOST}}
+          DEPLOY_USER: ${{secrets.DEPLOY_USER}}
+          IMAGE_TAG: ${{inputs.image_tag}}
         run: |
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" "cd ~/myrix && chmod +x scripts/deploy.sh && ./scripts/deploy.sh ghcr.io/${github.repository}:$IMAGE_TAG"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "cd ~/myrix && chmod +x scripts/deploy.sh && ./scripts/deploy.sh ghcr.io/${{github.repository}}:$IMAGE_TAG"
