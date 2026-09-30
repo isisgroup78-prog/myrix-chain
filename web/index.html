@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MYRIX Chain Explorer</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">MYRIX</div>
+        <nav>
+          <a href="#">Blocks</a>
+          <a href="#">Transactions</a>
+          <a href="#">Validators</a>
+        </nav>
+      </header>
+      <main>
+        <section class="hero">
+          <div>
+            <p class="eyebrow">Mainnet Explorer</p>
+            <h1>MYRIX Chain</h1>
+            <p class="subtitle">Public network status, latest blocks, validator activity, and transaction health.</p>
+          </div>
+          <button class="primary-btn">View latest block</button>
+        </section>
+        <section class="stats-grid">
+          <div class="stat-card"><label>Latest height</label><strong id="latest-height">--</strong></div>
+          <div class="stat-card"><label>Validators</label><strong id="validator-count">--</strong></div>
+          <div class="stat-card"><label>Peer count</label><strong id="peer-count">--</strong></div>
+          <div class="stat-card"><label>Chain ID</label><strong id="chain-id">--</strong></div>
+        </section>
+        <section class="panel">
+          <h2>Latest block</h2>
+          <pre id="block-data">Loading...</pre>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
