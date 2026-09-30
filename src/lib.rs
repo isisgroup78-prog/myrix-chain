@@ -9,6 +9,7 @@ pub mod staking;
 pub mod storage;
 pub mod validator;
 pub mod vm;
+pub mod evm_state;
 pub mod wallet;
 
 pub use api::create_router;
