@@ -25,7 +25,31 @@ pub struct ValidatorSet {
     pub epoch: u64,
 }
 
+#[derive(Deserialize)]
+struct GenesisValidator {
+    id: String,
+    public_key: String,
+    stake: u64,
+    #[serde(default)]
+    commission_bps: u64,
+}
+
 impl ValidatorSet {
+    pub fn from_genesis() -> Result<Self, String> {
+        let raw = include_str!("../../genesis/genesis.json");
+        let value: serde_json::Value = serde_json::from_str(raw).map_err(|e| format!("invalid genesis: {e}"))?;
+        let items = value.get("validators").and_then(|v| v.as_array()).ok_or("genesis validators missing")?;
+        let mut set = Self::new();
+        for item in items {
+            let v: GenesisValidator = serde_json::from_value(item.clone()).map_err(|e| format!("invalid genesis validator: {e}"))?;
+            let mut info = ValidatorInfo::new(v.id, v.public_key, v.stake);
+            info.commission = v.commission_bps;
+            set.add_validator(info)?;
+        }
+        Ok(set)
+    }
+
+
     pub fn new() -> Self { Self { validators: HashMap::new(), total_stake: 0, epoch: 0 } }
 
     pub fn add_validator(&mut self, validator: ValidatorInfo) -> Result<(), String> {
