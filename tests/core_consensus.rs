@@ -42,7 +42,6 @@ fn empty_block_has_valid_hash_and_chain_link() {
     assert_eq!(ledger.last_hash, block.hash);
 }
 
-
 #[test]
 fn signed_transaction_round_trip_is_valid() {
     use myrix_chain::wallet::Wallet;
@@ -67,7 +66,6 @@ fn signed_transaction_round_trip_is_valid() {
     assert!(ledger.apply_transaction(&tx).is_ok());
     assert_eq!(ledger.accounts[&tx.sender].balance, 899);
 }
-
 
 #[test]
 fn signed_votes_reach_stake_quorum_and_certificate() {
@@ -118,6 +116,6 @@ fn signed_votes_reach_stake_quorum_and_certificate() {
 
     let consensus = Consensus::new();
     let cert = consensus.build_certificate(&block, &votes, &set).unwrap();
-    assert_eq!(cert.voters.len(), 3);
+    assert_eq!(cert.votes.len(), 3);
     assert!(consensus.verify_certificate(&block, &cert, &set).is_ok());
 }
