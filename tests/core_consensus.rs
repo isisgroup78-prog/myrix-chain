@@ -38,3 +38,29 @@ fn empty_block_has_valid_hash_and_chain_link() {
     assert_eq!(ledger.height, 1);
     assert_eq!(ledger.last_hash, block.hash);
 }
+
+
+#[test]
+fn signed_transaction_round_trip_is_valid() {
+    use myrix_chain::wallet::Wallet;
+    use myrix_chain::core::{Account, Ledger, Transaction};
+    let wallet = Wallet::generate();
+    let receiver = "0xreceiver".to_string();
+    let mut ledger = Ledger::new();
+    ledger.accounts.insert(wallet.address.clone(), Account { id: wallet.address.clone(), balance: 1_000, nonce: 0 });
+    let mut tx = Transaction {
+        sender: wallet.address.clone(),
+        receiver,
+        amount: 100,
+        nonce: 0,
+        fee: 1,
+        public_key: wallet.public_key().to_string(),
+        signature: String::new(),
+        hash: String::new(),
+    };
+    tx.signature = wallet.sign(&tx.signing_bytes());
+    tx.hash = tx.compute_hash();
+    assert!(tx.validate(ledger.accounts.get(&tx.sender)).is_ok());
+    assert!(ledger.apply_transaction(&tx).is_ok());
+    assert_eq!(ledger.accounts[&tx.sender].balance, 899);
+}
